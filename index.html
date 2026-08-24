@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Órigo Mel — Painel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* paleta "Pólen & Campo" — TEMA CLARO, mel claro + salva/oliva */
+    --cera:#FBF4E6; --creme:#FFFDF7; --creme2:#F6EDD9;
+    --mel:#E8B84B; --mel-escuro:#B8860B; --mel-fundo:rgba(232,184,75,.16);
+    --tinta:#3D3320; --tinta-suave:#8A7A55;
+    --salva:#6B7A4A; --salva-fundo:rgba(107,122,74,.16);
+    --alerta:#B4622A; --alerta-fundo:rgba(180,98,42,.12);
+    --linha:#EADBB9; --linha-forte:#E0CB9E;
+    /* aliases usados pelo markup/JS existente */
+    --accent:var(--mel-escuro); --accent2:#9A7209; --bg:var(--cera); --panel:var(--creme);
+    --panel2:var(--creme2); --line:var(--linha); --text:var(--tinta); --muted:var(--tinta-suave);
+    --green:var(--salva); --greenbg:var(--salva-fundo); --red:var(--alerta); --redbg:var(--alerta-fundo);
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--sans);background:var(--cera);color:var(--tinta);line-height:1.5;
+    background-image:radial-gradient(1100px 500px at 82% -10%, rgba(232,184,75,.16), transparent 68%);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:26px 24px 90px}
+  .top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:14px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .glifo{
+    width:52px;height:52px;border-radius:50%;
+    background:radial-gradient(circle at 34% 28%,#F3D07A,var(--mel) 55%,var(--mel-escuro));
+    display:flex;align-items:center;justify-content:center;color:#4A3208;
+    font-family:var(--serif);font-size:30px;font-weight:700;font-style:italic;
+    box-shadow:0 6px 18px rgba(184,134,11,.25);
+  }
+  .marca{font-family:var(--serif);font-size:27px;font-weight:600;color:var(--tinta);line-height:.95;letter-spacing:-.01em}
+  .marca b{color:var(--mel-escuro);font-weight:700;font-style:italic}
+  .sub{font-size:10px;letter-spacing:5px;color:var(--tinta-suave);margin-top:3px;font-weight:600}
+  .roles{display:flex;gap:8px;flex-wrap:wrap}
+  .role{padding:9px 16px;border-radius:999px;border:1px solid var(--linha-forte);background:var(--creme);color:var(--tinta-suave);
+    font-weight:600;font-size:13px;cursor:pointer;transition:all .18s;font-family:var(--sans)}
+  .role:hover{border-color:var(--mel-escuro);color:var(--tinta)}
+  .role.on{background:var(--salva);color:#F7F3E7;border-color:var(--salva);box-shadow:0 4px 12px rgba(107,122,74,.28)}
+  .scen{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:22px;font-size:12px;color:var(--tinta-suave);
+    text-transform:uppercase;letter-spacing:1.5px}
+  .scen button{padding:6px 13px;border-radius:999px;border:1px solid var(--linha-forte);background:var(--creme);color:var(--tinta-suave);
+    cursor:pointer;font-size:12px;font-family:var(--sans);letter-spacing:.3px;text-transform:none}
+  .scen button.on{background:var(--creme2);color:var(--mel-escuro);border-color:var(--mel-escuro)}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:26px;border-bottom:1px solid var(--linha)}
+  .tab{padding:11px 18px;border:none;background:transparent;color:var(--tinta-suave);font-weight:600;font-size:14px;
+    cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:var(--sans);transition:color .15s}
+  .tab:hover{color:var(--tinta)}
+  .tab.on{color:var(--mel-escuro);border-bottom-color:var(--mel-escuro)}
+  .card{background:var(--creme);border:1px solid var(--linha);border-radius:18px;
+    padding:24px;margin-bottom:18px;box-shadow:0 1px 3px rgba(120,90,20,.05)}
+  .card h3{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--mel-escuro);margin-bottom:16px;text-transform:uppercase;font-family:var(--sans)}
+  h1{font-family:var(--serif);font-size:32px;font-weight:600;color:var(--tinta);margin:6px 0 20px;letter-spacing:-.02em}
+  .desc{color:var(--tinta-suave);font-size:14px;margin-bottom:18px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .field{flex:1 1 240px;margin-bottom:14px}
+  label{display:block;font-size:12px;margin-bottom:7px;color:var(--tinta-suave);font-weight:500;letter-spacing:.2px}
+  input,select{width:100%;padding:12px 14px;border-radius:11px;background:var(--creme);border:1px solid var(--linha-forte);
+    color:var(--tinta);font-size:15px;font-family:var(--sans);transition:border-color .15s,box-shadow .15s}
+  input:focus,select:focus{outline:none;border-color:var(--mel-escuro);box-shadow:0 0 0 3px var(--mel-fundo)}
+  input::placeholder{color:#b3a377}
+  .btn{padding:12px 20px;border-radius:11px;background:var(--mel-escuro);color:#FFF9EC;border:none;font-weight:700;
+    font-size:14px;cursor:pointer;font-family:var(--sans);transition:transform .12s,box-shadow .12s;box-shadow:0 4px 12px rgba(184,134,11,.22)}
+  .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 7px 18px rgba(184,134,11,.3)}
+  .btn.ghost{background:transparent;color:var(--mel-escuro);border:1px solid var(--mel-escuro);box-shadow:none}
+  .btn.ghost:hover:not(:disabled){background:var(--mel-fundo)}
+  .btn.sm{padding:8px 14px;font-size:13px;box-shadow:none}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .tbl{width:100%;border-collapse:collapse;font-size:14px}
+  .tbl th{text-align:left;padding:11px 10px;color:var(--tinta-suave);font-size:11px;letter-spacing:1px;
+    text-transform:uppercase;border-bottom:1px solid var(--linha);font-weight:600}
+  .tbl td{padding:14px 10px;border-bottom:1px solid var(--linha);vertical-align:top}
+  .tbl tr:last-child td{border-bottom:none}
+  .pill{display:inline-block;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.green{background:var(--salva-fundo);color:#4c5833}
+  .pill.amber{background:var(--mel-fundo);color:#8a6608}
+  .pill.red{background:var(--alerta-fundo);color:#8f4a20}
+  .pill.grey{background:rgba(138,122,85,.14);color:var(--tinta-suave)}
+  .umid{background:linear-gradient(140% 120% at 0% 0%, rgba(232,184,75,.16), var(--creme2));
+    border:1px solid var(--linha-forte);border-radius:14px;padding:18px;transition:border-color .2s}
+  .umid.ok{border-color:var(--salva)}
+  .umid .big{font-family:var(--serif);font-size:34px;font-weight:600;color:var(--mel-escuro);line-height:1}
+  .tag{font-size:10px;letter-spacing:1.5px;color:var(--tinta-suave);border:1px solid var(--linha-forte);border-radius:6px;
+    padding:3px 9px;text-transform:uppercase;font-weight:600}
+  .chk{display:flex;align-items:center;gap:11px;margin-top:16px;cursor:pointer;user-select:none}
+  .box{width:23px;height:23px;border-radius:7px;border:2px solid var(--mel-escuro);display:flex;align-items:center;
+    justify-content:center;color:#fff;font-weight:700;flex-shrink:0;transition:all .15s}
+  .box.on{background:var(--salva);border-color:var(--salva)}
+  .hint{font-size:12px;color:var(--tinta-suave);margin-top:11px;line-height:1.5}
+  .banner{padding:13px 16px;border-radius:12px;font-size:13px;margin-bottom:16px;line-height:1.5}
+  .banner.warn{background:var(--alerta-fundo);border:1px solid var(--alerta);color:#7d3f18}
+  .banner.info{background:var(--mel-fundo);border:1px solid var(--linha-forte);color:var(--tinta)}
+  .metric{font-size:40px;font-family:var(--serif);font-weight:600;color:var(--mel-escuro);line-height:1}
+  .muted{color:var(--tinta-suave)} .mt{margin-top:14px}
+  .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .grow{flex:1}
+  .foot{color:var(--tinta-suave);font-size:12px;text-align:center;margin-top:36px;letter-spacing:.3px}
+  .qr-scan{max-width:430px;margin:0 auto;text-align:center}
+  .qr-card{background:var(--creme);color:var(--tinta);border-radius:18px;padding:26px;font-family:var(--serif);text-align:left;
+    border:1px solid var(--linha);box-shadow:0 14px 40px rgba(120,90,20,.14)}
+  .qr-card h2{font-size:22px;margin-bottom:4px;font-weight:600;letter-spacing:-.01em}
+  .qr-line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--linha);font-size:14px;gap:12px}
+  .qr-line .k{color:var(--tinta-suave);font-family:var(--sans);font-size:13px}.qr-line .v{font-weight:600;text-align:right}
+  .qr-seal{display:inline-flex;align-items:center;gap:7px;background:var(--salva);color:#F7F3E7;
+    border-radius:999px;padding:6px 15px;font-size:13px;font-weight:700;font-family:var(--sans)}
+  .qr-fake{width:158px;height:158px;margin:16px auto;border-radius:16px;
+    background:repeating-conic-gradient(#3D3320 0 25%, #FBF4E6 0 50%) 0 0/26px 26px;
+    border:7px solid var(--creme);box-shadow:0 0 0 2px #3D3320,0 12px 26px rgba(120,90,20,.2);cursor:pointer}
+  .sub-item{padding:13px 0;border-bottom:1px solid var(--linha)}
+  .sub-item:last-child{border-bottom:none}
+  .sub-item .t{font-size:17px;font-weight:600}
+  .assoc-box{border:1px dashed var(--mel-escuro);border-radius:12px;padding:14px;margin-top:10px;background:rgba(232,184,75,.07)}
+  .chip{display:inline-block;background:var(--creme2);border:1px solid var(--linha-forte);border-radius:999px;padding:5px 13px;
+    margin:3px 4px 0 0;font-size:13px;color:var(--tinta)}
+  .apiario-linha{border-top:1px dashed var(--linha-forte);padding-top:12px;margin-top:12px}
+  .apiario-linha:first-of-type{border-top:none;padding-top:0;margin-top:6px}
+  .apiario-num{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mel-escuro);margin-bottom:8px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  /* ---------- moldura global com abelhas ---------- */
+  .moldura{position:relative;border:1.5px solid #C8A355;border-radius:22px;margin:14px;
+    background:linear-gradient(180deg, rgba(255,253,247,.5), transparent 120px);}
+  .bee-corner{position:absolute;top:8px;width:118px;height:118px;pointer-events:none;opacity:.85;z-index:0}
+  .bee-corner.tl{left:8px}
+  .bee-corner.tr{right:8px}
+  .corner-label{position:absolute;bottom:14px;font-family:var(--serif);font-size:12px;font-weight:600;
+    color:#5C461E;letter-spacing:.5px;pointer-events:none;opacity:.85}
+  .corner-label.bl{left:22px}
+  .corner-label.br{right:22px}
+  .moldura .wrap{position:relative;z-index:1;padding-top:96px}
+  @media (max-width:768px){
+    .moldura{margin:6px;border-radius:16px}
+    .bee-corner{width:88px;height:88px}
+    .corner-label{font-size:10px;bottom:10px}
+    .corner-label.bl{left:12px}.corner-label.br{right:12px}
+<style>
+  /* extras da versão conectada: login e utilidades */
+  .login-wrap{max-width:400px;margin:0 auto;padding:70px 20px}
+  .login-card{background:var(--creme);border:1px solid var(--linha);border-radius:18px;padding:28px;
+    box-shadow:0 14px 40px rgba(120,90,20,.12)}
+  .login-card h1{text-align:center;font-size:26px;margin-bottom:6px}
+  .login-sub{text-align:center;color:var(--tinta-suave);font-size:14px;margin-bottom:22px}
+  .erro{background:var(--alerta-fundo);border:1px solid var(--alerta);color:#7d3f18;padding:10px 14px;
+    border-radius:10px;font-size:13px;margin-bottom:14px}
+  .hidden{display:none!important}
+  .topline{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .user-chip{font-size:13px;color:var(--tinta-suave)}
+  .sair{color:var(--mel-escuro);cursor:pointer;text-decoration:underline;font-weight:600}
+  .estado{text-align:center;color:var(--tinta-suave);padding:30px 10px;font-size:14px}
+  .spin{width:24px;height:24px;border:3px solid var(--linha-forte);border-top-color:var(--mel-escuro);
+    border-radius:50%;animation:g 1s linear infinite;margin:0 auto 10px}
+  @keyframes g{to{transform:rotate(360deg)}}
+  .ok-flash{background:var(--salva-fundo);border:1px solid var(--salva);color:#4c5833;padding:10px 14px;
+    border-radius:10px;font-size:13px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<!-- TELA DE LOGIN -->
+<div id="tela-login" class="login-wrap">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="width:54px;height:54px;border-radius:50%;margin:0 auto 10px;background:radial-gradient(circle at 34% 28%,#F3D07A,#E8B84B 55%,#B8860B);display:flex;align-items:center;justify-content:center;color:#4A3208;font-family:var(--serif);font-size:30px;font-weight:700;font-style:italic">ó</div>
+    </div>
+    <h1>Óri<b style="color:var(--mel-escuro);font-style:italic">go</b> Mel</h1>
+    <div class="login-sub">Painel de rastreabilidade · BIOTEC</div>
+    <div id="login-erro" class="erro hidden"></div>
+    <div class="field"><label>E-mail</label><input id="in-email" type="email" placeholder="voce@exemplo.com"></div>
+    <div class="field"><label>Senha</label><input id="in-senha" type="password" placeholder="••••••••"></div>
+    <button class="btn" style="width:100%" id="btn-entrar" onclick="entrar()">Entrar</button>
+  </div>
+</div>
+
+<!-- APP (após login) -->
+<div id="tela-app" class="moldura hidden">
+  <svg class="bee-corner tl" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#B59043" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M4 60 Q40 54 70 74 T120 96" opacity=".5"/><path d="M4 60 Q22 46 30 26" opacity=".5"/>
+    <g transform="translate(30,26)" opacity=".7"><circle cx="0" cy="0" r="4" fill="#E8B84B" stroke="none"/>
+      <ellipse cx="0" cy="-9" rx="4" ry="7"/><ellipse cx="8.5" cy="-3" rx="4" ry="7" transform="rotate(72 8.5 -3)"/>
+      <ellipse cx="5" cy="8" rx="4" ry="7" transform="rotate(144 5 8)"/><ellipse cx="-5" cy="8" rx="4" ry="7" transform="rotate(216 -5 8)"/>
+      <ellipse cx="-8.5" cy="-3" rx="4" ry="7" transform="rotate(288 -8.5 -3)"/></g>
+    <g transform="translate(150,120) rotate(24)"><ellipse cx="-2" cy="-16" rx="15" ry="9" transform="rotate(-24 -2 -16)" opacity=".8"/>
+      <ellipse cx="10" cy="-15" rx="13" ry="8" transform="rotate(18 10 -15)" opacity=".8"/><ellipse cx="6" cy="6" rx="20" ry="13"/>
+      <path d="M0 -3 Q6 6 2 16"/><path d="M9 -6 Q15 6 11 18"/><path d="M18 -5 Q22 5 18 15"/><circle cx="-16" cy="0" r="7"/>
+      <path d="M-20 -5 Q-26 -14 -22 -18"/><path d="M-16 -6 Q-20 -16 -15 -20"/><path d="M26 10 l8 5"/>
+      <path d="M-2 18 l-3 8"/><path d="M8 19 l0 9"/><path d="M17 16 l4 8"/></g>
+  </svg>
+  <svg class="bee-corner tr" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#B59043" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M216 60 Q180 54 150 74 T100 96" opacity=".5"/><path d="M216 60 Q198 46 190 26" opacity=".5"/>
+    <g transform="translate(190,26)" opacity=".7"><circle cx="0" cy="0" r="3.5" fill="#E8B84B" stroke="none"/>
+      <ellipse cx="0" cy="-8" rx="3.5" ry="6"/><ellipse cx="7.5" cy="-2.5" rx="3.5" ry="6" transform="rotate(72 7.5 -2.5)"/>
+      <ellipse cx="4.5" cy="7" rx="3.5" ry="6" transform="rotate(144 4.5 7)"/><ellipse cx="-4.5" cy="7" rx="3.5" ry="6" transform="rotate(216 -4.5 7)"/>
+      <ellipse cx="-7.5" cy="-2.5" rx="3.5" ry="6" transform="rotate(288 -7.5 -2.5)"/></g>
+    <g transform="translate(70,120) rotate(-24)"><ellipse cx="2" cy="-13" rx="11" ry="7" transform="rotate(24 2 -13)" opacity=".8"/>
+      <ellipse cx="-8" cy="-12" rx="10" ry="6" transform="rotate(-18 -8 -12)" opacity=".8"/><ellipse cx="-4" cy="6" rx="15" ry="12"/>
+      <path d="M-8 -4 Q-4 6 -8 15" opacity=".8"/><path d="M0 -5 Q4 6 0 16" opacity=".8"/><circle cx="12" cy="0" r="7.5"/>
+      <path d="M16 -5 Q22 -13 18 -17"/><path d="M12 -6 Q15 -15 10 -19"/><path d="M-3 17 l-2 8"/><path d="M-10 16 l-4 8"/><path d="M4 16 l2 8"/></g>
+  </svg>
+  <div class="corner-label bl">Abelhas com Ferrão</div>
+  <div class="corner-label br">Abelhas sem Ferrão</div>
+
+  <div class="wrap">
+    <div class="top">
+      <div class="brand"><div class="glifo">ó</div><div><div class="marca">Óri<b>go</b></div><div class="sub">MEL · RASTREABILIDADE</div></div></div>
+      <div class="topline"><span class="user-chip" id="user-chip"></span> <span class="sair" onclick="sair()">sair</span></div>
+    </div>
+    <div class="tabs" id="tabs"></div>
+    <div id="app"><div class="estado"><div class="spin"></div>Carregando…</div></div>
+    <div class="foot">Órigo Mel · BIOTEC / Cooltivando · rastreabilidade e certificação</div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://vmzmthtsxiwwjtpupclv.supabase.co';
+const SUPABASE_ANON='sb_publishable_haUPRxXYuiSrLZvc1YetBw_6vBzDc9M';
+// garante estado inicial correto mesmo antes de tudo
+document.getElementById('tela-app').classList.add('hidden');
+document.getElementById('tela-login').classList.remove('hidden');
+if(typeof supabase==='undefined'){
+  document.getElementById('login-erro').textContent='Não foi possível carregar a biblioteca (verifique a conexão e recarregue).';
+  document.getElementById('login-erro').classList.remove('hidden');
+  throw new Error('supabase-js não carregou');
+}
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+
+/* ===== estado da sessão ===== */
+let ME=null;            // linha de mel_usuario do logado
+let ESTAB=null;         // estabelecimento atual (BIOTEC escolhe; estab usa o próprio)
+let ESPECIES=[];        // cache da tabela de referência
+let TAB=0;
+
+const $=id=>document.getElementById(id);
+const esc=s=>(s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const umidTxt=e=>e.umidade_min==null?('máx. '+e.umidade_max+'%'):(e.umidade_min+'% a '+e.umidade_max+'%');
+const espById=id=>ESPECIES.find(e=>e.id===id);
+function hoje(){return new Date();}
+function laudoVigente(f){ if(!f||f.status!=='habilitada'||!f.laudo_emissao)return false;
+  const v=new Date(f.laudo_emissao); v.setMonth(v.getMonth()+12); return v>=hoje(); }
+function flash(msg){ const d=document.createElement('div'); d.className='ok-flash'; d.textContent=msg;
+  const app=$('app'); app.prepend(d); setTimeout(()=>d.remove(),3000); }
+
+/* ===== LOGIN ===== */
+async function entrar(){
+  const email=$('in-email').value.trim(), senha=$('in-senha').value;
+  const errBox=$('login-erro'); errBox.classList.add('hidden');
+  $('btn-entrar').disabled=true; $('btn-entrar').textContent='Entrando…';
+  try{
+    const {error}=await sb.auth.signInWithPassword({email,password:senha});
+    if(error) throw error;
+    await iniciarSessao();
+  }catch(e){
+    errBox.textContent='Não foi possível entrar: '+(e.message||'verifique e-mail e senha.');
+    errBox.classList.remove('hidden');
+  }finally{
+    $('btn-entrar').disabled=false; $('btn-entrar').textContent='Entrar';
+  }
+}
+async function sair(){ await sb.auth.signOut(); location.reload(); }
+
+async function iniciarSessao(){
+  // quem sou eu? (mel_usuario)
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){ mostrarLogin(); return; }
+  const {data:us,error}=await sb.from('mel_usuario').select('*').eq('auth_uid',user.id).limit(1);
+  if(error||!us||!us.length){
+    $('login-erro').textContent='Seu login não está vinculado a um usuário do Órigo Mel. Fale com a BIOTEC.';
+    $('login-erro').classList.remove('hidden'); await sb.auth.signOut(); return;
+  }
+  ME=us[0];
+  // espécies (referência, leitura pública)
+  const {data:esp}=await sb.from('mel_especie').select('*').eq('ativo',true).order('ramo');
+  ESPECIES=esp||[];
+  // estabelecimento atual
+  if(ME.role==='estabelecimento'){
+    const {data:e}=await sb.from('mel_estabelecimento').select('*').eq('id',ME.estabelecimento_id).maybeSingle();
+    ESTAB=e;
+  }else{
+    // BIOTEC: pega o primeiro estabelecimento (depois dá p/ ter um seletor)
+    const {data:es}=await sb.from('mel_estabelecimento').select('*').order('criado_em').limit(1);
+    ESTAB=(es&&es[0])||null;
+  }
+  $('tela-login').classList.add('hidden');
+  $('tela-app').classList.remove('hidden');
+  $('user-chip').textContent=(ME.nome||'')+' · '+rotuloRole(ME.role);
+  TAB=0; render();
+}
+function rotuloRole(r){ return r==='estabelecimento'?'Produtor':(r==='admin_biotec'?'Admin BIOTEC':'Auditor BIOTEC'); }
+function mostrarLogin(){ $('tela-app').classList.add('hidden'); $('tela-login').classList.remove('hidden'); }
+const isBiotec=()=>ME&&(ME.role==='admin_biotec'||ME.role==='auditor_biotec');
+
+/* ===== abas conforme papel ===== */
+function abas(){
+  return isBiotec()
+    ? ['Estabelecimento','Produtos','Floradas & Laudos','Auditoria']
+    : ['Início','Floradas','Lotes','Envase','Estoque'];
+}
+function render(){
+  const tabs=abas();
+  $('tabs').innerHTML=tabs.map((t,i)=>`<button class="tab ${TAB===i?'on':''}" onclick="TAB=${i};render()">${t}</button>`).join('');
+  if(!ESTAB){ $('app').innerHTML='<div class="card"><h3>Sem estabelecimento</h3><div class="desc">Nenhum estabelecimento cadastrado ainda. Peça à BIOTEC para cadastrar o primeiro.</div></div>'; return; }
+  $('app').innerHTML='<div class="estado"><div class="spin"></div>Carregando…</div>';
+  if(isBiotec()){ [telaEstab,telaProdutos,telaFloradas,telaAuditoria][TAB](); }
+  else { [telaInicio,telaFloradas,telaLotes,telaEnvase,telaEstoque][TAB](); }
+}
+
+/* ===== ADMIN: ESTABELECIMENTO (lê e grava apiários/associados) ===== */
+async function telaEstab(){
+  const e=ESTAB;
+  const {data:apis}=await sb.from('mel_apiario').select('*').eq('estabelecimento_id',e.id).order('criado_em');
+  const {data:assoc}=await sb.from('mel_associado').select('*').eq('estabelecimento_id',e.id).eq('ativo',true).order('criado_em');
+  const isAssoc=e.tipo==='associacao';
+  const linhas=(apis||[]).map((ap,i)=>`
+    <div class="apiario-linha"><div class="apiario-num">Apiário ${i+1}</div>
+      <div class="row">
+        <div class="field"><label>Município</label><input value="${esc(ap.municipio)}" id="ap-mun-${ap.id}"></div>
+        <div class="field"><label>Georreferenciamento</label><input value="${esc(ap.geo||'')}" id="ap-geo-${ap.id}" placeholder="-24.20, -50.94"></div>
+        <div class="field" style="flex:0 1 170px"><label>Origem</label>
+          <select id="ap-ori-${ap.id}"><option value="propria" ${ap.origem==='propria'?'selected':''}>própria</option><option value="terceiros" ${ap.origem==='terceiros'?'selected':''}>terceiros</option></select></div>
+        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn sm ghost" onclick="salvarApiario('${ap.id}')">Salvar</button></div>
+      </div>
+    </div>`).join('') || '<div class="hint">Nenhum apiário. Adicione o primeiro abaixo.</div>';
+  const chipsAssoc=(assoc||[]).map(a=>`<span class="chip">${esc(a.nome)}</span>`).join('');
+  $('app').innerHTML=`<h1>Estabelecimento</h1>
+    <div class="card"><h3>Dados</h3>
+      <div class="row">
+        <div class="field"><label>Tipo</label><input value="${isAssoc?'Associação / Cooperativa':'Produtor individual'}" disabled></div>
+        <div class="field"><label>${isAssoc?'Razão social':'Nome'}</label><input value="${esc(e.razao_social)}" disabled></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Documento</label><input value="${esc(e.cnpj)}" disabled></div>
+        <div class="field"><label>Município</label><input value="${esc(e.municipio)}/${esc(e.uf)}" disabled></div>
+        <div class="field"><label>Inspeção</label><input value="${esc(e.tipo_inspecao)} ${esc(e.num_inspecao)}" disabled></div>
+      </div>
+    </div>
+    <div class="card"><h3>Apiários</h3>
+      ${linhas}
+      <div class="apiario-linha"><div class="apiario-num">Novo apiário</div>
+        <div class="row">
+          <div class="field"><input id="new-mun" placeholder="Município"></div>
+          <div class="field"><input id="new-geo" placeholder="-24.20, -50.94"></div>
+          <div class="field" style="flex:0 1 170px"><select id="new-ori"><option value="propria">própria</option><option value="terceiros">terceiros</option></select></div>
+          <div style="flex:0 0 auto"><button class="btn sm" onclick="addApiario()">+ Adicionar</button></div>
+        </div>
+      </div>
+    </div>
+    ${isAssoc?`<div class="card"><h3>Associados</h3>
+      <div style="margin-bottom:12px">${chipsAssoc||'<span class="hint">Nenhum associado ainda.</span>'}</div>
+      <div class="row"><div class="field"><input id="new-assoc" placeholder="Nome do associado"></div>
+        <div style="flex:0 0 auto"><button class="btn sm" onclick="addAssociado()">+ Adicionar</button></div></div>
+    </div>`:''}`;
+}
+async function salvarApiario(id){
+  const municipio=$('ap-mun-'+id).value.trim(), geo=$('ap-geo-'+id).value.trim(), origem=$('ap-ori-'+id).value;
+  const {error}=await sb.from('mel_apiario').update({municipio,geo,origem}).eq('id',id);
+  if(error){ alert('Erro ao salvar: '+error.message); return; } flash('Apiário salvo.');
+}
+async function addApiario(){
+  const municipio=$('new-mun').value.trim(), geo=$('new-geo').value.trim(), origem=$('new-ori').value;
+  if(!municipio){ alert('Informe o município.'); return; }
+  const {error}=await sb.from('mel_apiario').insert({estabelecimento_id:ESTAB.id,municipio,geo,origem});
+  if(error){ alert('Erro: '+error.message); return; } render();
+}
+async function addAssociado(){
+  const nome=$('new-assoc').value.trim(); if(!nome){ alert('Informe o nome.'); return; }
+  const {error}=await sb.from('mel_associado').insert({estabelecimento_id:ESTAB.id,nome});
+  if(error){ alert('Erro: '+error.message); return; } render();
+}
+
+/* ===== ADMIN: PRODUTOS ===== */
+async function telaProdutos(){
+  const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
+  const rows=[];
+  for(const p of (prods||[])){
+    const e=espById(p.especie_id)||{};
+    const {data:embs}=await sb.from('mel_embalagem').select('*').eq('produto_id',p.id);
+    const embTxt=(embs||[]).map(x=>x.tipo+' '+x.peso+' ('+x.estoque+')').join('<br>')||'<span class="muted">sem embalagem</span>';
+    rows.push(`<tr><td><b>${esc(p.nome)}</b></td><td>${esc(e.nome_comum||'')}<br><span class="muted">${e.ramo==='apicultura'?'florada':'espécie+emb.'}</span></td><td>${embTxt}</td><td>${e.umidade_max?umidTxt(e):''}</td><td>${esc(p.num_selo_arte||'—')}</td></tr>`);
+  }
+  const optsEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)} — ${esc(e.nome_cientifico)}</option>`).join('');
+  $('app').innerHTML=`<h1>Produtos</h1>
+    <div class="banner info">Cada produto pode ter vários tamanhos de embalagem. Apis usa florada no QR; sem ferrão usa espécie + embalagem.</div>
+    <div class="card"><h3>Novo produto</h3>
+      <div class="row"><div class="field"><label>Nome</label><input id="p-nome" placeholder="ex.: Mel de Jataí"></div>
+        <div class="field"><label>Espécie</label><select id="p-esp">${optsEsp}</select></div></div>
+      <div class="row"><div class="field"><label>Tipo</label><select id="p-tipo"><option value="mel">mel</option><option value="polen">pólen</option><option value="propolis">própolis</option><option value="geoproplis">geoprópolis</option><option value="geleia_real">geleia real</option></select></div>
+        <div class="field"><label>Nº Selo Arte</label><input id="p-selo" placeholder="SA-…"></div></div>
+      <button class="btn" onclick="addProduto()">Adicionar produto</button>
+    </div>
+    <div class="card"><h3>Produtos cadastrados</h3>
+      <table class="tbl"><thead><tr><th>Produto</th><th>Identidade</th><th>Embalagens (estoque)</th><th>Umidade</th><th>Selo</th></tr></thead><tbody>${rows.join('')||'<tr><td colspan=5 class=muted>Nenhum produto ainda.</td></tr>'}</tbody></table>
+    </div>`;
+}
+async function addProduto(){
+  const nome=$('p-nome').value.trim(), especie_id=$('p-esp').value, tipo=$('p-tipo').value, num_selo_arte=$('p-selo').value.trim()||null;
+  if(!nome){ alert('Informe o nome.'); return; }
+  const {error}=await sb.from('mel_produto').insert({estabelecimento_id:ESTAB.id,especie_id,tipo,nome,num_selo_arte});
+  if(error){ alert('Erro: '+error.message); return; } render();
+}
+
+/* ===== ADMIN: FLORADAS & LAUDOS ===== */
+async function telaFloradas(){
+  const {data:fl}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
+  const rows=(fl||[]).map(f=>{
+    const e=espById(f.especie_id)||{}; const vig=laudoVigente(f);
+    const pill=f.status==='pendente'?'grey':(vig?'green':'red');
+    const txt=f.status==='pendente'?'Pendente':(vig?'Habilitada · vigente':'Laudo vencido');
+    const acao=(f.status==='pendente'||!vig)?`<button class="btn sm" onclick="habilitarFlorada('${f.id}')">Anexar laudo</button>`:`<span class="muted">laudo ${esc(f.laudo_numero||'')}</span>`;
+    return `<tr><td><b>${esc(f.nome)}</b><br><span class="muted">${esc(e.nome_comum||'')}</span></td><td>${f.laudo_emissao?('emissão '+f.laudo_emissao):'<span class=muted>sem laudo</span>'}</td><td><span class="pill ${pill}">${txt}</span></td><td>${acao}</td></tr>`;
+  }).join('');
+  $('app').innerHTML=`<h1>Floradas & Laudos</h1>
+    <div class="banner info">O produtor cria a florada (pendente). Só a BIOTEC habilita anexando laudo válido por 12 meses.</div>
+    <div class="card"><h3>Floradas</h3><table class="tbl"><thead><tr><th>Florada</th><th>Laudo</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhuma florada.</td></tr>'}</tbody></table></div>`;
+}
+async function habilitarFlorada(id){
+  const num=prompt('Número do laudo:'); if(num==null)return;
+  const emissao=prompt('Data de emissão (AAAA-MM-DD):',new Date().toISOString().slice(0,10)); if(emissao==null)return;
+  const {error}=await sb.from('mel_florada').update({status:'habilitada',laudo_numero:num,laudo_emissao:emissao,habilitada_por:ME.id,habilitada_em:new Date().toISOString()}).eq('id',id);
+  if(error){ alert('Erro: '+error.message); return; } flash('Florada habilitada.'); render();
+}
+
+/* ===== ADMIN: AUDITORIA ===== */
+async function telaAuditoria(){
+  const {data:auds}=await sb.from('mel_auditoria').select('*').eq('estabelecimento_id',ESTAB.id).order('competencia',{ascending:false});
+  const rows=(auds||[]).map(a=>`<tr><td><b>${esc(a.competencia)}</b><br><span class="muted">v${a.versao}</span></td><td>${a.assinado_em?('assinado '+new Date(a.assinado_em).toLocaleDateString('pt-BR')):'—'}</td><td>${a.assinante_nome?esc(a.assinante_nome):'<span class=muted>não assinado</span>'}</td><td>${a.assinado_em?'<span class="pill green">Assinado</span>':`<button class="btn sm" onclick="assinar('${a.id}')">Assinar</button>`}</td></tr>`).join('');
+  $('app').innerHTML=`<h1>Auditoria mensal</h1>
+    <div class="card"><h3>Gerar documento do mês</h3>
+      <div class="row"><div class="field"><label>Competência (AAAA-MM)</label><input id="a-comp" value="${new Date().toISOString().slice(0,7)}"></div></div>
+      <button class="btn" onclick="gerarAuditoria()">Gerar documento</button>
+    </div>
+    <div class="card"><h3>Documentos</h3><table class="tbl"><thead><tr><th>Competência</th><th>Assinatura</th><th>Assinante</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhum documento.</td></tr>'}</tbody></table></div>`;
+}
+async function gerarAuditoria(){
+  const competencia=$('a-comp').value.trim();
+  const {error}=await sb.from('mel_auditoria').insert({estabelecimento_id:ESTAB.id,competencia,dados:{gerado_em:new Date().toISOString()}});
+  if(error){ alert('Erro: '+error.message); return; } render();
+}
+async function assinar(id){
+  const {error}=await sb.rpc('mel_assinar_auditoria',{p_auditoria:id});
+  if(error){ alert('Erro ao assinar: '+error.message); return; } flash('Documento assinado.'); render();
+}
+
+/* ===== PRODUTOR: INÍCIO ===== */
+async function telaInicio(){
+  const {data:lotes}=await sb.from('mel_lote').select('id,status').eq('estabelecimento_id',ESTAB.id);
+  const {data:prods}=await sb.from('mel_produto').select('id').eq('estabelecimento_id',ESTAB.id);
+  const lib=(lotes||[]).filter(l=>l.status==='liberado').length;
+  $('app').innerHTML=`<h1>Bem-vindo</h1>
+    <div class="row">
+      <div class="card grow"><h3>Lotes liberados</h3><div class="metric">${lib}</div></div>
+      <div class="card grow"><h3>Produtos</h3><div class="metric">${(prods||[]).length}</div></div>
+    </div>
+    <div class="card"><h3>Como funciona</h3><div class="desc">Você cria floradas (nascem pendentes até a BIOTEC habilitar), registra lotes de colheita, envasa vinculando os lotes e o sistema abastece o estoque. O QR público mostra os tipos de mel automaticamente.</div></div>`;
+}
+
+/* ===== PRODUTOR: FLORADAS ===== */
+async function telaFloradasProd(){}
+/* reusa telaFloradas p/ leitura; produtor cria via form abaixo */
+
+/* ===== PRODUTOR: LOTES ===== */
+async function telaLotes(){
+  const {data:apis}=await sb.from('mel_apiario').select('*').eq('estabelecimento_id',ESTAB.id);
+  const {data:fl}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id);
+  const {data:assoc}=await sb.from('mel_associado').select('*').eq('estabelecimento_id',ESTAB.id).eq('ativo',true);
+  const {data:lotes}=await sb.from('mel_lote').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em',{ascending:false});
+  const habil=(fl||[]).filter(laudoVigente);
+  const isAssoc=ESTAB.tipo==='associacao';
+  const optEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)}</option>`).join('');
+  const optFlor=habil.map(f=>`<option value="${f.id}" data-esp="${f.especie_id}">${esc(f.nome)}</option>`).join('');
+  const optApi=(apis||[]).map(a=>`<option value="${a.id}">${esc(a.municipio)}</option>`).join('');
+  const optAssoc=(assoc||[]).map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join('');
+  const rows=(lotes||[]).map(l=>{const e=espById(l.especie_id)||{};return `<tr><td><b>${esc(l.codigo)}</b><br><span class="muted">${l.data_colheita}</span></td><td>${esc(e.nome_comum||'')}</td><td>${l.quantidade} ${l.unidade}<br><span class="muted">saldo ${l.saldo}</span></td><td><span class="pill green">${l.status}</span></td></tr>`;}).join('');
+  $('app').innerHTML=`<h1>Lotes de colheita</h1>
+    ${habil.length===0?'<div class="banner warn">Nenhuma florada habilitada. Crie a florada e aguarde a BIOTEC anexar o laudo.</div>':''}
+    <div class="card"><h3>Registrar lote</h3>
+      <div class="row">
+        <div class="field"><label>Espécie</label><select id="l-esp">${optEsp}</select></div>
+        <div class="field"><label>Florada (habilitadas)</label><select id="l-flor"><option value="">—</option>${optFlor}</select></div>
+        <div class="field"><label>Apiário</label><select id="l-api">${optApi}</select></div>
+      </div>
+      ${isAssoc?`<div class="field"><label>Associado (dono)</label><select id="l-assoc"><option value="">—</option>${optAssoc}</select></div>`:''}
+      <div class="row">
+        <div class="field"><label>Quantidade</label><input id="l-qtd" type="number" placeholder="0"></div>
+        <div class="field"><label>Unidade</label><select id="l-un"><option value="kg">kg</option><option value="litro">litros</option></select></div>
+        <div class="field"><label>Data colheita</label><input id="l-data" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      </div>
+      <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="l-umid" style="width:auto"> Confirmo que atende ao padrão de umidade da espécie</label>
+      <div><button class="btn" onclick="addLote()">Registrar lote</button></div>
+    </div>
+    <div class="card"><h3>Lotes</h3><table class="tbl"><thead><tr><th>Lote</th><th>Espécie</th><th>Quantidade</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhum lote.</td></tr>'}</tbody></table></div>`;
+}
+async function addLote(){
+  const especie_id=$('l-esp').value, florada_id=$('l-flor').value, apiario_id=$('l-api').value;
+  const quantidade=parseFloat($('l-qtd').value), unidade=$('l-un').value, data_colheita=$('l-data').value;
+  const umid=$('l-umid').checked;
+  const assocEl=$('l-assoc'); const associado_id=assocEl?(assocEl.value||null):null;
+  if(!florada_id){ alert('Selecione uma florada habilitada.'); return; }
+  if(!(quantidade>0)){ alert('Informe a quantidade.'); return; }
+  if(!umid){ alert('Confirme o padrão de umidade.'); return; }
+  const esp=espById(especie_id);
+  const {error}=await sb.from('mel_lote').insert({
+    codigo:'ML-'+data_colheita.slice(0,7).replace('-','')+'-TEMP', // trigger renumera se necessário
+    estabelecimento_id:ESTAB.id, apiario_id, florada_id, especie_id, tipo:'mel',
+    quantidade, unidade, saldo:quantidade, data_colheita, umidade_confirmada:umid, associado_id
+  });
+  if(error){ alert('Não foi possível registrar (o banco pode ter bloqueado por florada sem laudo vigente): '+error.message); return; }
+  flash('Lote registrado.'); render();
+}
+
+/* ===== PRODUTOR: ENVASE ===== */
+async function telaEnvase(){
+  const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id);
+  const {data:lotes}=await sb.from('mel_lote').select('*').eq('estabelecimento_id',ESTAB.id).gt('saldo',0);
+  let embOpts='';
+  const optProd=(prods||[]).map(p=>`<option value="${p.id}" data-esp="${p.especie_id}">${esc(p.nome)}</option>`).join('');
+  $('app').innerHTML=`<h1>Envase</h1>
+    <div class="banner info">O envase baixa o saldo dos lotes e abastece o estoque da embalagem escolhida.</div>
+    <div class="card"><h3>Novo envase</h3>
+      <div class="row">
+        <div class="field"><label>Produto</label><select id="en-prod" onchange="carregarEmb()">${optProd}</select></div>
+        <div class="field"><label>Embalagem</label><select id="en-emb"><option>—</option></select></div>
+      </div>
+      <div class="row"><div class="field"><label>Nº de potes</label><input id="en-potes" type="number" placeholder="0"></div>
+        <div class="field"><label>Kg envasados</label><input id="en-kg" type="number" placeholder="0"></div></div>
+      <div id="en-lotes"><span class="muted">Selecione o produto para ver os lotes com saldo.</span></div>
+      <div class="mt"><button class="btn" onclick="registrarEnvase()">Registrar envase</button></div>
+    </div>`;
+  window.__lotesEnv=lotes||[];
+  carregarEmb();
+}
+async function carregarEmb(){
+  const prodId=$('en-prod').value; if(!prodId)return;
+  const prod=(await sb.from('mel_produto').select('*').eq('id',prodId).maybeSingle()).data;
+  const {data:embs}=await sb.from('mel_embalagem').select('*').eq('produto_id',prodId).eq('ativo',true);
+  $('en-emb').innerHTML=(embs||[]).map(e=>`<option value="${e.id}">${esc(e.tipo)} ${esc(e.peso)}</option>`).join('')||'<option value="">cadastre embalagem</option>';
+  const lotesEsp=(window.__lotesEnv||[]).filter(l=>l.especie_id===prod.especie_id);
+  $('en-lotes').innerHTML='<label>Lotes que abastecem (kg de cada)</label>'+(lotesEsp.length?('<table class="tbl"><thead><tr><th>Lote</th><th>Saldo</th><th>Usar</th></tr></thead><tbody>'+lotesEsp.map(l=>`<tr><td>${esc(l.codigo)}</td><td>${l.saldo} ${l.unidade}</td><td style="width:120px"><input type="number" min="0" max="${l.saldo}" id="en-use-${l.id}" placeholder="0"></td></tr>`).join('')+'</tbody></table>'):'<span class="muted">Sem lotes com saldo para esta espécie.</span>');
+}
+async function registrarEnvase(){
+  const produto_id=$('en-prod').value, embalagem_id=$('en-emb').value;
+  const num_potes=parseInt($('en-potes').value)||0, qtd=parseFloat($('en-kg').value)||0;
+  if(!embalagem_id){ alert('Selecione a embalagem.'); return; }
+  if(num_potes<=0||qtd<=0){ alert('Informe potes e kg.'); return; }
+  // cria produção (trigger abastece estoque)
+  const {data:prodRow,error:e1}=await sb.from('mel_producao').insert({estabelecimento_id:ESTAB.id,produto_id,embalagem_id,qtd_envasada:qtd,unidade:'kg',num_potes}).select().maybeSingle();
+  if(e1){ alert('Erro: '+e1.message); return; }
+  // vincula lotes consumidos (trigger baixa saldo)
+  const lotesEsp=(window.__lotesEnv||[]);
+  for(const l of lotesEsp){ const inp=$('en-use-'+l.id); const q=inp?parseFloat(inp.value)||0:0;
+    if(q>0){ const {error:e2}=await sb.from('mel_producao_lote').insert({producao_id:prodRow.id,lote_id:l.id,qtd_consumida:q});
+      if(e2){ alert('Erro ao baixar lote '+l.codigo+': '+e2.message); return; } } }
+  flash('Envase registrado e estoque abastecido.'); render();
+}
+
+/* ===== PRODUTOR: ESTOQUE ===== */
+async function telaEstoque(){
+  const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id);
+  const linhas=[]; let total=0;
+  for(const p of (prods||[])){
+    const {data:embs}=await sb.from('mel_embalagem').select('*').eq('produto_id',p.id);
+    (embs||[]).forEach((x,i)=>{ total+=x.estoque;
+      linhas.push(`<tr><td>${i===0?'<b>'+esc(p.nome)+'</b>':''}</td><td>${esc(x.tipo)} ${esc(x.peso)}</td><td><b>${x.estoque}</b> potes</td><td><button class="btn sm ghost" onclick="saida('${x.id}')">Saída</button></td></tr>`); });
+  }
+  $('app').innerHTML=`<h1>Estoque de produto envasado</h1>
+    <div class="row"><div class="card grow"><h3>Total em estoque</h3><div class="metric">${total}</div><div class="muted">potes</div></div></div>
+    <div class="card"><h3>Por produto e tamanho</h3><table class="tbl"><thead><tr><th>Produto</th><th>Embalagem</th><th>Estoque</th><th>Ação</th></tr></thead><tbody>${linhas.join('')||'<tr><td colspan=4 class=muted>Sem embalagens.</td></tr>'}</tbody></table></div>`;
+}
+async function saida(embId){
+  const q=parseInt(prompt('Quantos potes saíram?','0'))||0; if(q<=0)return;
+  const {error}=await sb.from('mel_saida_produto').insert({embalagem_id:embId,quantidade:q,motivo:'venda'});
+  if(error){ alert('Erro (estoque insuficiente?): '+error.message); return; } flash('Saída registrada.'); render();
+}
+
+/* substitui telaFloradas do produtor por versão com criação */
+async function telaFloradas(){
+  if(isBiotec()){ return telaFloradasBiotec(); }
+  const {data:fl}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
+  const {data:apis}=await sb.from('mel_apiario').select('*').eq('estabelecimento_id',ESTAB.id);
+  const rows=(fl||[]).map(f=>{const e=espById(f.especie_id)||{};const vig=laudoVigente(f);
+    const pill=f.status==='pendente'?'grey':(vig?'green':'red');const txt=f.status==='pendente'?'Pendente (aguarda BIOTEC)':(vig?'Habilitada':'Laudo vencido');
+    return `<tr><td><b>${esc(f.nome)}</b><br><span class="muted">${esc(e.nome_comum||'')}</span></td><td><span class="pill ${pill}">${txt}</span></td></tr>`;}).join('');
+  const optEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)}</option>`).join('');
+  const optApi=(apis||[]).map(a=>`<option value="${a.id}">${esc(a.municipio)}</option>`).join('');
+  $('app').innerHTML=`<h1>Floradas</h1>
+    <div class="banner info">Você cadastra a florada; ela nasce pendente até a BIOTEC anexar o laudo.</div>
+    <div class="card"><h3>Nova florada</h3>
+      <div class="row"><div class="field"><label>Nome / origem botânica</label><input id="f-nome" placeholder="ex.: Eucalipto"></div>
+        <div class="field"><label>Espécie</label><select id="f-esp">${optEsp}</select></div>
+        <div class="field"><label>Apiário</label><select id="f-api">${optApi}</select></div></div>
+      <button class="btn" onclick="addFlorada()">Cadastrar (nasce pendente)</button>
+    </div>
+    <div class="card"><h3>Floradas</h3><table class="tbl"><thead><tr><th>Florada</th><th>Situação</th></tr></thead><tbody>${rows||'<tr><td colspan=2 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
+}
+async function telaFloradasBiotec(){
+  const {data:fl}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
+  const rows=(fl||[]).map(f=>{const e=espById(f.especie_id)||{};const vig=laudoVigente(f);
+    const pill=f.status==='pendente'?'grey':(vig?'green':'red');const txt=f.status==='pendente'?'Pendente':(vig?'Habilitada · vigente':'Laudo vencido');
+    const acao=(f.status==='pendente'||!vig)?`<button class="btn sm" onclick="habilitarFlorada('${f.id}')">Anexar laudo</button>`:`<span class="muted">laudo ${esc(f.laudo_numero||'')}</span>`;
+    return `<tr><td><b>${esc(f.nome)}</b><br><span class="muted">${esc(e.nome_comum||'')}</span></td><td>${f.laudo_emissao||'<span class=muted>sem laudo</span>'}</td><td><span class="pill ${pill}">${txt}</span></td><td>${acao}</td></tr>`;}).join('');
+  $('app').innerHTML=`<h1>Floradas & Laudos</h1>
+    <div class="banner info">Só a BIOTEC habilita, anexando laudo válido por 12 meses.</div>
+    <div class="card"><h3>Floradas</h3><table class="tbl"><thead><tr><th>Florada</th><th>Laudo</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
+}
+async function addFlorada(){
+  const nome=$('f-nome').value.trim(), especie_id=$('f-esp').value, apiario_id=$('f-api').value;
+  if(!nome){ alert('Informe o nome da florada.'); return; }
+  if(!apiario_id){ alert('Cadastre um apiário primeiro.'); return; }
+  const {error}=await sb.from('mel_florada').insert({estabelecimento_id:ESTAB.id,apiario_id,especie_id,nome,status:'pendente'});
+  if(error){ alert('Erro: '+error.message); return; } render();
+}
+
+/* ===== boot: se já houver sessão, entra direto ===== */
+(async ()=>{ const {data:{session}}=await sb.auth.getSession(); if(session){ await iniciarSessao(); } })();
+</script>
+</body>
+</html>
