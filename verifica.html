@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Órigo Mel — Rastreabilidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cera:#FBF4E6; --creme:#FFFDF7; --creme2:#F6EDD9;
+    --mel:#E8B84B; --mel-escuro:#B8860B; --mel-fundo:rgba(232,184,75,.16);
+    --tinta:#3D3320; --tinta-suave:#8A7A55;
+    --salva:#6B7A4A; --linha:#EADBB9; --linha-forte:#E0CB9E;
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--cera);color:var(--tinta);line-height:1.5;
+    background-image:radial-gradient(1000px 500px at 82% -10%, rgba(232,184,75,.16), transparent 68%);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .moldura{position:relative;border:1.5px solid #C8A355;border-radius:22px;margin:14px;min-height:calc(100vh - 28px);
+    background:linear-gradient(180deg, rgba(255,253,247,.5), transparent 120px)}
+  .bee-corner{position:absolute;top:8px;width:110px;height:110px;pointer-events:none;opacity:.85;z-index:0}
+  .bee-corner.tl{left:8px}.bee-corner.tr{right:8px}
+  .corner-label{position:absolute;bottom:14px;font-family:var(--serif);font-size:12px;font-weight:600;color:#5C461E;opacity:.85}
+  .corner-label.bl{left:22px}.corner-label.br{right:22px}
+  @media (max-width:768px){.moldura{margin:6px;border-radius:16px}.bee-corner{width:80px;height:80px}.corner-label{font-size:10px}}
+  @media (max-width:520px){.corner-label{display:none}}
+  .wrap{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:90px 20px 60px}
+  .brand{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:24px}
+  .glifo{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#F3D07A,var(--mel) 55%,var(--mel-escuro));
+    display:flex;align-items:center;justify-content:center;color:#4A3208;font-family:var(--serif);font-size:26px;font-weight:700;font-style:italic}
+  .marca{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--tinta);line-height:1}
+  .marca b{color:var(--mel-escuro);font-weight:700;font-style:italic}
+  .sub{font-size:10px;letter-spacing:4px;color:var(--tinta-suave)}
+  .card{background:var(--creme);color:var(--tinta);border-radius:18px;padding:26px;font-family:var(--serif);
+    border:1px solid var(--linha);box-shadow:0 14px 40px rgba(120,90,20,.14)}
+  .seal{display:inline-flex;align-items:center;gap:7px;background:var(--salva);color:#F7F3E7;border-radius:999px;
+    padding:6px 15px;font-size:13px;font-weight:700;font-family:var(--sans);margin-bottom:12px}
+  h2{font-size:22px;margin-bottom:4px;font-weight:600}
+  .tagline{color:var(--tinta-suave);font-size:13px;margin-bottom:6px}
+  .line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--linha);font-size:14px;gap:12px}
+  .line .k{color:var(--tinta-suave);font-family:var(--sans);font-size:13px}.line .v{font-weight:600;text-align:right}
+  .sectitle{margin-top:16px;font-family:var(--sans);font-size:12px;letter-spacing:1px;color:var(--tinta-suave);text-transform:uppercase}
+  .item{padding:13px 0;border-bottom:1px solid var(--linha)}.item:last-child{border-bottom:none}
+  .item .t{font-size:17px;font-weight:600}
+  .item .d{color:#555;font-size:14px}.item .s{color:#888;font-size:12px;margin-top:2px}
+  .foot{margin-top:14px;color:#888;font-size:11px;text-align:center}
+  .estado{text-align:center;color:var(--tinta-suave);padding:40px 10px;font-size:15px}
+  .spin{width:26px;height:26px;border:3px solid var(--linha-forte);border-top-color:var(--mel-escuro);
+    border-radius:50%;animation:g 1s linear infinite;margin:0 auto 12px}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="moldura">
+  <svg class="bee-corner tl" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#B59043" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M4 60 Q40 54 70 74 T120 96" opacity=".5"/><path d="M4 60 Q22 46 30 26" opacity=".5"/>
+    <g transform="translate(30,26)" opacity=".7"><circle cx="0" cy="0" r="4" fill="#E8B84B" stroke="none"/>
+      <ellipse cx="0" cy="-9" rx="4" ry="7"/><ellipse cx="8.5" cy="-3" rx="4" ry="7" transform="rotate(72 8.5 -3)"/>
+      <ellipse cx="5" cy="8" rx="4" ry="7" transform="rotate(144 5 8)"/><ellipse cx="-5" cy="8" rx="4" ry="7" transform="rotate(216 -5 8)"/>
+      <ellipse cx="-8.5" cy="-3" rx="4" ry="7" transform="rotate(288 -8.5 -3)"/></g>
+    <g transform="translate(150,120) rotate(24)"><ellipse cx="-2" cy="-16" rx="15" ry="9" transform="rotate(-24 -2 -16)" opacity=".8"/>
+      <ellipse cx="10" cy="-15" rx="13" ry="8" transform="rotate(18 10 -15)" opacity=".8"/><ellipse cx="6" cy="6" rx="20" ry="13"/>
+      <path d="M0 -3 Q6 6 2 16"/><path d="M9 -6 Q15 6 11 18"/><path d="M18 -5 Q22 5 18 15"/><circle cx="-16" cy="0" r="7"/>
+      <path d="M-20 -5 Q-26 -14 -22 -18"/><path d="M-16 -6 Q-20 -16 -15 -20"/><path d="M26 10 l8 5"/>
+      <path d="M-2 18 l-3 8"/><path d="M8 19 l0 9"/><path d="M17 16 l4 8"/></g>
+  </svg>
+  <svg class="bee-corner tr" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#B59043" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M216 60 Q180 54 150 74 T100 96" opacity=".5"/><path d="M216 60 Q198 46 190 26" opacity=".5"/>
+    <g transform="translate(190,26)" opacity=".7"><circle cx="0" cy="0" r="3.5" fill="#E8B84B" stroke="none"/>
+      <ellipse cx="0" cy="-8" rx="3.5" ry="6"/><ellipse cx="7.5" cy="-2.5" rx="3.5" ry="6" transform="rotate(72 7.5 -2.5)"/>
+      <ellipse cx="4.5" cy="7" rx="3.5" ry="6" transform="rotate(144 4.5 7)"/><ellipse cx="-4.5" cy="7" rx="3.5" ry="6" transform="rotate(216 -4.5 7)"/>
+      <ellipse cx="-7.5" cy="-2.5" rx="3.5" ry="6" transform="rotate(288 -7.5 -2.5)"/></g>
+    <g transform="translate(70,120) rotate(-24)"><ellipse cx="2" cy="-13" rx="11" ry="7" transform="rotate(24 2 -13)" opacity=".8"/>
+      <ellipse cx="-8" cy="-12" rx="10" ry="6" transform="rotate(-18 -8 -12)" opacity=".8"/><ellipse cx="-4" cy="6" rx="15" ry="12"/>
+      <path d="M-8 -4 Q-4 6 -8 15" opacity=".8"/><path d="M0 -5 Q4 6 0 16" opacity=".8"/><circle cx="12" cy="0" r="7.5"/>
+      <path d="M16 -5 Q22 -13 18 -17"/><path d="M12 -6 Q15 -15 10 -19"/><path d="M-3 17 l-2 8"/><path d="M-10 16 l-4 8"/><path d="M4 16 l2 8"/></g>
+  </svg>
+  <div class="corner-label bl">Abelhas com Ferrão</div>
+  <div class="corner-label br">Abelhas sem Ferrão</div>
+
+  <div class="wrap">
+    <div class="brand">
+      <div class="glifo">ó</div>
+      <div><div class="marca">Óri<b>go</b></div><div class="sub">MEL · RASTREABILIDADE</div></div>
+    </div>
+    <div id="conteudo">
+      <div class="estado"><div class="spin"></div>Carregando rastreabilidade…</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://vmzmthtsxiwwjtpupclv.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_haUPRxXYuiSrLZvc1YetBw_6vBzDc9M';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const el = document.getElementById('conteudo');
+const params = new URLSearchParams(location.search);
+const estabId = params.get('e');   // ?e=<uuid do estabelecimento>
+
+function umidTxt(min,max){ return (min==null) ? ('máx. '+max+'%') : (min+'% a '+max+'%'); }
+
+function indisponivel(msg){
+  el.innerHTML = `<div class="card" style="text-align:center">
+    <h2>Página indisponível</h2>
+    <div class="tagline" style="margin-top:8px">${msg||'Este selo ainda não está ativo.'}</div>
+  </div>`;
+}
+
+async function carregar(){
+  if(!estabId){ indisponivel('QR inválido: estabelecimento não informado.'); return; }
+  try{
+    // cabeçalho do estabelecimento (só chancela ativa aparece na view)
+    const { data: estab, error: e1 } = await sb.from('mel_qr_estab')
+      .select('*').eq('estabelecimento_id', estabId).maybeSingle();
+    if(e1) throw e1;
+    if(!estab){ indisponivel('Selo em verificação pela BIOTEC ou estabelecimento não encontrado.'); return; }
+
+    // produtos com descritivo por ramo
+    const { data: prods, error: e2 } = await sb.from('mel_qr_produtos')
+      .select('*').eq('estabelecimento_id', estabId);
+    if(e2) throw e2;
+
+    const isAssoc = estab.tipo_estab === 'associacao';
+    const itens = (prods||[]).map(p=>{
+      const sub = p.ramo==='apicultura'
+        ? (p.florada ? ('Florada: '+p.florada) : '—')
+        : ('Espécie '+p.especie + (p.embalagens ? (' · '+p.embalagens) : ''));
+      return `<div class="item">
+        <div class="t">${p.nome}</div>
+        <div class="d">${sub}</div>
+        <div class="s">${p.nome_cientifico} · umidade padrão ${umidTxt(p.umidade_min,p.umidade_max)}</div>
+      </div>`;
+    }).join('') || '<div class="item"><div class="d">Nenhum produto publicado ainda.</div></div>';
+
+    el.innerHTML = `<div class="card">
+      <div style="text-align:center"><span class="seal">✓ Selo Órigo ativo</span></div>
+      <h2>${estab.produtor}</h2>
+      <div class="tagline">${isAssoc?'Associação de produtores · ':''}Rastreabilidade verificada em tempo real</div>
+      <div class="line"><span class="k">Origem</span><span class="v">${estab.municipio}/${estab.uf}${estab.biomas?(' · '+estab.biomas):''}</span></div>
+      <div class="line"><span class="k">Inspeção</span><span class="v">${estab.tipo_inspecao} ${estab.num_inspecao}</span></div>
+      <div class="sectitle">Tipos de mel deste produtor</div>
+      ${itens}
+      <div class="foot">Rastreabilidade e certificação de origem · Emitido pela BIOTEC Consultoria</div>
+    </div>`;
+  }catch(err){
+    indisponivel('Não foi possível carregar agora. Tente novamente em instantes.');
+    console.error(err);
+  }
+}
+carregar();
+</script>
+</body>
+</html>
