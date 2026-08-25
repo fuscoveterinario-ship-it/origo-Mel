@@ -387,16 +387,21 @@ async function addApiario(){
 async function criarAssociadoLogin(){
   const nome=$('na-nome').value.trim(), email=$('na-email').value.trim(), senha=$('na-senha').value;
   if(!nome||!email||senha.length<6){ alert('Preencha nome, e-mail e senha (mín. 6 caracteres).'); return; }
+  // apiários digitados no formulário (só os com município preenchido)
+  const apiarios=(window.__novoAssocApiarios||[]).filter(a=>(a.municipio||'').trim())
+    .map(a=>({municipio:a.municipio.trim(), geo:(a.geo||'').trim(), origem:a.origem||'propria'}));
   const {data:{session}}=await sb.auth.getSession();
   try{
     const resp=await fetch(SUPABASE_URL+'/functions/v1/criar-associado',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
-      body:JSON.stringify({nome,email,senha})
+      body:JSON.stringify({nome,email,senha,apiarios})
     });
     const out=await resp.json();
     if(!resp.ok||out.error){ alert('Não foi possível criar: '+(out.error||resp.status)); return; }
-    flash('Associado criado com login: '+email); render();
+    // limpa o formulário
+    window.__naNome=''; window.__naEmail=''; window.__naSenha=''; window.__novoAssocApiarios=[{municipio:'',geo:'',origem:'propria'}];
+    flash('Associado criado com login e '+apiarios.length+' apiário(s): '+email); render();
   }catch(e){ alert('Erro de conexão: '+e.message); }
 }
 
@@ -703,19 +708,45 @@ async function telaAssociados(){
   const {data:usAssoc}=await sb.from('mel_usuario').select('associado_id,nome').eq('estabelecimento_id',ESTAB.id).not('associado_id','is',null);
   const comLogin=new Set((usAssoc||[]).map(u=>u.associado_id));
   const rows=(assoc||[]).map(a=>`<tr><td><b>${esc(a.nome)}</b></td><td>${comLogin.has(a.id)?'<span class="pill green">tem login</span>':'<span class="pill grey">sem login</span>'}</td></tr>`).join('');
+  if(!window.__novoAssocApiarios) window.__novoAssocApiarios=[{municipio:'',geo:'',origem:'propria'}];
   $('app').innerHTML=`<h1>Associados</h1>
     <div class="banner info">Cada associado recebe um login próprio e cadastra só o próprio mel. Você (associação) vê e edita tudo, faz o envase e gera o QR.</div>
     <div class="card"><h3>Criar associado com login</h3>
       <div class="row">
-        <div class="field"><label>Nome do associado</label><input id="na-nome" placeholder="ex.: João Apicultor"></div>
-        <div class="field"><label>E-mail (login)</label><input id="na-email" type="email" placeholder="joao@email.com"></div>
+        <div class="field"><label>Nome do associado</label><input id="na-nome" placeholder="ex.: João Apicultor" value="${esc(window.__naNome||'')}" oninput="window.__naNome=this.value"></div>
+        <div class="field"><label>E-mail (login)</label><input id="na-email" type="email" placeholder="joao@email.com" value="${esc(window.__naEmail||'')}" oninput="window.__naEmail=this.value"></div>
+        <div class="field"><label>Senha provisória</label><input id="na-senha" type="text" placeholder="mínimo 6 caracteres" value="${esc(window.__naSenha||'')}" oninput="window.__naSenha=this.value"></div>
       </div>
-      <div class="row">
-        <div class="field"><label>Senha provisória</label><input id="na-senha" type="text" placeholder="mínimo 6 caracteres"></div>
-        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn" onclick="criarAssociadoLogin()">+ Criar</button></div>
+      <div class="assoc-box">
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="flex:0 1 220px"><label>Número de apiários</label>
+            <select onchange="setNumApiariosAssoc(+this.value)">
+              ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}" ${window.__novoAssocApiarios.length===n?'selected':''}>${n}</option>`).join('')}
+            </select></div>
+          <div class="hint" style="flex:1;margin:0 0 12px">Informe quantos apiários o associado tem. Para cada um, identifique município, coordenadas e se é próprio ou de terceiros.</div>
+        </div>
+        ${window.__novoAssocApiarios.map((ap,i)=>`
+          <div class="apiario-linha"><div class="apiario-num">Apiário ${i+1}</div>
+            <div class="row">
+              <div class="field"><label>Município de origem</label><input value="${esc(ap.municipio)}" placeholder="ex.: Ortigueira" oninput="window.__novoAssocApiarios[${i}].municipio=this.value"></div>
+              <div class="field"><label>Georreferenciamento (lat, long)</label><input value="${esc(ap.geo)}" placeholder="ex.: -24.2050, -50.9470" oninput="window.__novoAssocApiarios[${i}].geo=this.value"></div>
+              <div class="field" style="flex:0 1 170px"><label>Origem</label>
+                <select onchange="window.__novoAssocApiarios[${i}].origem=this.value">
+                  <option value="propria" ${ap.origem==='propria'?'selected':''}>própria</option>
+                  <option value="terceiros" ${ap.origem==='terceiros'?'selected':''}>terceiros</option>
+                </select></div>
+            </div>
+          </div>`).join('')}
       </div>
+      <div><button class="btn" onclick="criarAssociadoLogin()">+ Criar associado com apiários</button></div>
     </div>
     <div class="card"><h3>Associados</h3><table class="tbl"><thead><tr><th>Nome</th><th>Login</th></tr></thead><tbody>${rows||'<tr><td colspan=2 class=muted>Nenhum associado ainda.</td></tr>'}</tbody></table></div>`;
+}
+function setNumApiariosAssoc(n){
+  const arr=window.__novoAssocApiarios||[];
+  if(n>arr.length){ while(arr.length<n) arr.push({municipio:'',geo:'',origem:'propria'}); }
+  else { arr.length=n; }
+  window.__novoAssocApiarios=arr; telaAssociados();
 }
 
 /* ===== boot: se já houver sessão, entra direto ===== */
