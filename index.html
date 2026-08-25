@@ -683,13 +683,12 @@ async function telaFloradas(){
     const pill=f.status==='pendente'?'grey':(vig?'green':'red');const txt=f.status==='pendente'?'Pendente (aguarda BIOTEC)':(vig?'Habilitada':'Laudo vencido');
     return `<tr><td><b>${esc(f.nome)}</b><br><span class="muted">${esc(e.nome_comum||'')}</span></td><td><span class="pill ${pill}">${txt}</span></td></tr>`;}).join('');
   const optEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)}</option>`).join('');
-  const optApi=(apis||[]).map(a=>`<option value="${a.id}">${esc(a.municipio)}</option>`).join('');
+  window.__apiariosFlorada=apis||[]; // usados para escolher o apiário automaticamente
   $('app').innerHTML=`<h1>Floradas</h1>
     <div class="banner info">Você cadastra a florada; ela nasce pendente até a BIOTEC anexar o laudo.</div>
     <div class="card"><h3>Nova florada</h3>
       <div class="row"><div class="field"><label>Nome / origem botânica</label><input id="f-nome" placeholder="ex.: Eucalipto"></div>
-        <div class="field"><label>Espécie</label><select id="f-esp">${optEsp}</select></div>
-        <div class="field"><label>Apiário</label><select id="f-api">${optApi}</select></div></div>
+        <div class="field"><label>Espécie</label><select id="f-esp">${optEsp}</select></div></div>
       <button class="btn" onclick="addFlorada()">Cadastrar (nasce pendente)</button>
     </div>
     <div class="card"><h3>Floradas</h3><table class="tbl"><thead><tr><th>Florada</th><th>Situação</th></tr></thead><tbody>${rows||'<tr><td colspan=2 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
@@ -705,9 +704,11 @@ async function telaFloradasBiotec(){
     <div class="card"><h3>Floradas</h3><table class="tbl"><thead><tr><th>Florada</th><th>Laudo</th><th>Situação</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
 }
 async function addFlorada(){
-  const nome=$('f-nome').value.trim(), especie_id=$('f-esp').value, apiario_id=$('f-api').value;
+  const nome=$('f-nome').value.trim(), especie_id=$('f-esp').value;
   if(!nome){ alert('Informe o nome da florada.'); return; }
-  if(!apiario_id){ alert('Cadastre um apiário primeiro.'); return; }
+  const apis=window.__apiariosFlorada||[];
+  if(!apis.length){ alert('Cadastre um apiário primeiro (no cadastro do estabelecimento/associado).'); return; }
+  const apiario_id=apis[0].id; // escolhe automaticamente o primeiro apiário disponível
   const reg={estabelecimento_id:ESTAB.id,apiario_id,especie_id,nome,status:'pendente'};
   if(isAssociado()) reg.associado_id=ME.associado_id; // florada nasce vinculada ao associado
   const {error}=await sb.from('mel_florada').insert(reg);
