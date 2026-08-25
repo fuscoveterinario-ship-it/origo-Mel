@@ -404,8 +404,20 @@ async function criarAssociadoLogin(){
     flash('Associado criado com login e '+apiarios.length+' apiário(s): '+email); render();
   }catch(e){ alert('Erro de conexão: '+e.message); }
 }
-
-/* ===== ADMIN: PRODUTOS ===== */
+async function desativarAssociado(id, nome){
+  if(!confirm('Desativar o associado "'+nome+'"?\n\nEle deixará de aparecer na lista e o login será bloqueado. O histórico de mel dele é preservado.')) return;
+  const {data:{session}}=await sb.auth.getSession();
+  try{
+    const resp=await fetch(SUPABASE_URL+'/functions/v1/desativar-associado',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({associado_id:id})
+    });
+    const out=await resp.json();
+    if(!resp.ok||out.error){ alert('Não foi possível desativar: '+(out.error||resp.status)); return; }
+    flash('Associado desativado: '+nome); render();
+  }catch(e){ alert('Erro de conexão: '+e.message); }
+}
 async function telaProdutos(){
   const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
   const rows=[];
@@ -707,7 +719,7 @@ async function telaAssociados(){
   const {data:assoc}=await sb.from('mel_associado').select('*').eq('estabelecimento_id',ESTAB.id).eq('ativo',true).order('criado_em');
   const {data:usAssoc}=await sb.from('mel_usuario').select('associado_id,nome').eq('estabelecimento_id',ESTAB.id).not('associado_id','is',null);
   const comLogin=new Set((usAssoc||[]).map(u=>u.associado_id));
-  const rows=(assoc||[]).map(a=>`<tr><td><b>${esc(a.nome)}</b></td><td>${comLogin.has(a.id)?'<span class="pill green">tem login</span>':'<span class="pill grey">sem login</span>'}</td></tr>`).join('');
+  const rows=(assoc||[]).map(a=>`<tr><td><b>${esc(a.nome)}</b></td><td>${comLogin.has(a.id)?'<span class="pill green">tem login</span>':'<span class="pill grey">sem login</span>'}</td><td><button class="btn sm ghost" onclick="desativarAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Desativar</button></td></tr>`).join('');
   if(!window.__novoAssocApiarios) window.__novoAssocApiarios=[{municipio:'',geo:'',origem:'propria'}];
   $('app').innerHTML=`<h1>Associados</h1>
     <div class="banner info">Cada associado recebe um login próprio e cadastra só o próprio mel. Você (associação) vê e edita tudo, faz o envase e gera o QR.</div>
@@ -740,7 +752,7 @@ async function telaAssociados(){
       </div>
       <div><button class="btn" onclick="criarAssociadoLogin()">+ Criar associado com apiários</button></div>
     </div>
-    <div class="card"><h3>Associados</h3><table class="tbl"><thead><tr><th>Nome</th><th>Login</th></tr></thead><tbody>${rows||'<tr><td colspan=2 class=muted>Nenhum associado ainda.</td></tr>'}</tbody></table></div>`;
+    <div class="card"><h3>Associados</h3><table class="tbl"><thead><tr><th>Nome</th><th>Login</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=3 class=muted>Nenhum associado ainda.</td></tr>'}</tbody></table></div>`;
 }
 function setNumApiariosAssoc(n){
   const arr=window.__novoAssocApiarios||[];
