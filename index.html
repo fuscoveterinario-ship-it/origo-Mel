@@ -718,7 +718,7 @@ async function carregarEmb(){
   if(floradaAntes&&floradas.some(f=>f.id===floradaAntes)) floradaEl.value=floradaAntes;
   const lotesFlorada=lotesEsp.filter(l=>l.florada_id===floradaEl.value);
   window.__lotesTelaEnv=lotesFlorada;
-  $('en-lotes').innerHTML='<label>Lotes que abastecem (kg de cada)</label>'+(lotesFlorada.length?('<table class="tbl"><thead><tr><th>Lote</th><th>Associado</th><th>Saldo</th><th>Usar</th></tr></thead><tbody>'+lotesFlorada.map(l=>`<tr><td>${esc(l.codigo)}</td><td>${esc(nomeAssociadoEnv(l.associado_id))}</td><td>${l.saldo} ${l.unidade}</td><td style="width:120px"><input type="number" min="0" max="${l.saldo}" id="en-use-${l.id}" placeholder="0"></td></tr>`).join('')+'</tbody></table>'):'<span class="muted">Selecione uma florada com lotes e saldo para este produto.</span>');
+  $('en-lotes').innerHTML='<label>Lotes que abastecem (baixa proporcional automática)</label>'+(lotesFlorada.length?('<table class="tbl"><thead><tr><th>Lote</th><th>Associado</th><th>Saldo</th><th>Proporção</th><th>Usar</th></tr></thead><tbody>'+lotesFlorada.map(l=>`<tr><td>${esc(l.codigo)}</td><td>${esc(nomeAssociadoEnv(l.associado_id))}</td><td>${l.saldo} ${l.unidade}</td><td><span id="en-prop-${l.id}" class="muted">0%</span></td><td style="width:140px"><input type="number" min="0" max="${l.saldo}" id="en-use-${l.id}" placeholder="0" readonly></td></tr>`).join('')+'</tbody></table>'):'<span class="muted">Selecione uma florada com lotes e saldo para este produto.</span>');
   calcularEnvaseAutomatico();
 }
 function nomeAssociadoEnv(id){
@@ -743,11 +743,14 @@ function calcularEnvaseAutomatico(){
   for(let i=0;i<lotes.length;i++){
     const l=lotes[i];
     const inp=$('en-use-'+l.id);
+    const propEl=$('en-prop-'+l.id);
     if(!inp)continue;
     const saldo=Number(l.saldo)||0;
-    const proporcional=totalSaldo>0 ? kg*(saldo/totalSaldo) : 0;
+    const proporcao=totalSaldo>0 ? saldo/totalSaldo : 0;
+    const proporcional=kg*proporcao;
     const usar=Math.min(saldo, i===lotes.length-1 ? Math.max(0, kg-alocado) : proporcional);
     inp.value=usar>0 ? Number(usar.toFixed(3)) : '';
+    if(propEl) propEl.textContent=proporcao>0 ? Number((proporcao*100).toFixed(2))+'%' : '0%';
     alocado+=usar;
   }
 }
@@ -788,26 +791,17 @@ async function telaEstoque(){
     <div class="card"><h3>Cadastrar embalagem</h3>
       <div class="row">
         <div class="field"><label>Produto</label><select id="emb-prod">${optProd}</select></div>
-        <div class="field"><label>Tipo de embalagem</label><select id="emb-tipo" onchange="carregarPesosEmbalagem()"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
-        <div class="field"><label>Peso</label><select id="emb-peso"></select></div>
+        <div class="field"><label>Tipo de embalagem</label><select id="emb-tipo"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
+        <div class="field"><label>Peso / tamanho</label><input id="emb-peso" placeholder="ex.: 250g, 500g, 1 kg, 5 kg"></div>
       </div>
       <button class="btn" onclick="addEmbalagem()" ${optProd?'':'disabled'}>Adicionar embalagem</button>
     </div>
     <div class="card"><h3>Por produto e tamanho</h3><table class="tbl"><thead><tr><th>Produto</th><th>Embalagem</th><th>Estoque</th><th>Ação</th></tr></thead><tbody>${linhas.join('')||'<tr><td colspan=4 class=muted>Sem embalagens.</td></tr>'}</tbody></table></div>`;
-  carregarPesosEmbalagem();
-}
-function embalagemPesos(tipo){
-  return tipo==='balde' ? ['5 kg','10 kg'] : ['250g','300g','500g','1 kg'];
-}
-function carregarPesosEmbalagem(){
-  const tipo=$('emb-tipo')?.value||'pote', pesoEl=$('emb-peso');
-  if(!pesoEl)return;
-  pesoEl.innerHTML=embalagemPesos(tipo).map(p=>`<option value="${p}">${p}</option>`).join('');
 }
 async function addEmbalagem(){
-  const produto_id=$('emb-prod').value, tipo=$('emb-tipo').value, peso=$('emb-peso').value;
+  const produto_id=$('emb-prod').value, tipo=$('emb-tipo').value, peso=$('emb-peso').value.trim();
   if(!produto_id){ alert('Cadastre um produto primeiro.'); return; }
-  if(!tipo||!peso){ alert('Selecione tipo e peso da embalagem.'); return; }
+  if(!tipo||!peso){ alert('Selecione o tipo e informe o peso/tamanho da embalagem.'); return; }
   const {data:existente}=await sb.from('mel_embalagem').select('id').eq('produto_id',produto_id).eq('tipo',tipo).eq('peso',peso).maybeSingle();
   if(existente){ alert('Essa embalagem já está cadastrada para este produto.'); return; }
   const {error}=await sb.from('mel_embalagem').insert({produto_id,tipo,peso,estoque:0,ativo:true});
