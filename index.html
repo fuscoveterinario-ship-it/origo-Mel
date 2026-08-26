@@ -304,9 +304,7 @@ const isGestor=()=>ME&&ME.role==='estabelecimento'&&!ME.associado_id;
 /* ===== abas conforme papel ===== */
 function abas(){
   if(isBiotec()){
-    const base=['Estabelecimento','Produtos','Floradas & Laudos','Auditoria'];
-    if(ESTAB && ESTAB.tipo==='associacao') base.push('Associados');
-    return base;
+    return ['Estabelecimento','Produtos','Floradas & Laudos','Auditoria'];
   }
   if(isAssociado()) return ['Início','Minhas Floradas','Meus Lotes']; // associado: sem envase/estoque
   // gestor: se for associação, ganha aba Associados
@@ -320,7 +318,7 @@ function render(){
   $('tabs').innerHTML=tabs.map((t,i)=>`<button class="tab ${TAB===i?'on':''}" onclick="irAba(${i})">${t}</button>`).join('');
   if(!ESTAB&&!isBiotec()){ $('app').innerHTML='<div class="card"><h3>Sem estabelecimento</h3><div class="desc">Nenhum estabelecimento cadastrado ainda. Peça à BIOTEC para cadastrar o primeiro.</div></div>'; return; }
   $('app').innerHTML='<div class="estado"><div class="spin"></div>Carregando…</div>';
-  if(isBiotec()){ [telaEstab,telaProdutos,telaFloradas,telaAuditoria,telaAssociados][TAB](); }
+  if(isBiotec()){ [telaEstab,telaProdutos,telaFloradas,telaAuditoria][TAB](); }
   else if(isAssociado()){ [telaInicio,telaFloradas,telaLotes][TAB](); }
   else if(ESTAB.tipo==='associacao'){ [telaInicio,telaFloradas,telaLotes,telaEnvase,telaEstoque,telaAssociados][TAB](); }
   else { [telaInicio,telaFloradas,telaLotes,telaEnvase,telaEstoque][TAB](); }
@@ -394,6 +392,16 @@ async function telaEstabDetalhe(){
     </div>`).join('') || '<div class="hint">Nenhum apiário. Adicione o primeiro abaixo.</div>';
   const {data:usAssoc}=await sb.from('mel_usuario').select('associado_id').eq('estabelecimento_id',e.id).not('associado_id','is',null);
   const comLogin=new Set((usAssoc||[]).map(u=>u.associado_id));
+  // contagem de apiários por associado
+  const {data:apisAssoc}=await sb.from('mel_apiario').select('associado_id').eq('estabelecimento_id',e.id).not('associado_id','is',null);
+  const contApi={}; (apisAssoc||[]).forEach(a=>{contApi[a.associado_id]=(contApi[a.associado_id]||0)+1;});
+  const linhasCoop=(assoc||[]).map(a=>`<tr>
+      <td><b>${esc(a.nome)}</b></td>
+      <td>${comLogin.has(a.id)?'<span class="pill green">tem login</span>':'<span class="pill grey">sem login</span>'}</td>
+      <td>${contApi[a.id]||0} apiário(s)</td>
+      <td><button class="btn sm" onclick="gerenciarApiariosAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Apiários</button>
+          <button class="btn sm ghost" onclick="desativarAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Desativar</button></td>
+    </tr>`).join('');
   const listaAssoc=(assoc||[]).map(a=>`<span class="chip">${esc(a.nome)}${comLogin.has(a.id)?' ✓ login':' <span class="muted">sem login</span>'}</span>`).join('');
   const voltar=isBiotec()?`<div><button class="btn sm ghost" onclick="window.__estabView='lista';TAB=0;render()">← voltar à lista</button></div>`:'';
   $('app').innerHTML=`<h1>${esc(e.razao_social)}</h1>
@@ -420,9 +428,16 @@ async function telaEstabDetalhe(){
           <div style="flex:0 0 auto"><button class="btn sm" onclick="addApiario()">+ Adicionar</button></div>
         </div>
       </div>
-    </div>`:`<div class="card"><h3>Cooperativa / Associação</h3>
-      <div class="banner info">Nesta cooperativa, os apiários pertencem a cada associado. Vá na aba <b>Associados</b> para cadastrar os apicultores e, em seguida, os apiários de cada um.</div>
-      <div>Associados cadastrados: ${listaAssoc||'<span class="hint">nenhum ainda</span>'}</div>
+    </div>`:`<div class="card"><h3>Cooperados</h3>
+      <div class="banner info">Cadastre o cooperado (nome, e-mail e senha). Depois, use o botão <b>Apiários</b> na linha dele para cadastrar os apiários daquele cooperado.</div>
+      <div class="row">
+        <div class="field"><label>Nome do cooperado</label><input id="na-nome" placeholder="ex.: João Apicultor" value="${esc(window.__naNome||'')}" oninput="window.__naNome=this.value"></div>
+        <div class="field"><label>E-mail (login)</label><input id="na-email" type="email" placeholder="joao@email.com" value="${esc(window.__naEmail||'')}" oninput="window.__naEmail=this.value"></div>
+        <div class="field"><label>Senha provisória</label><input id="na-senha" type="text" placeholder="mínimo 6 caracteres" value="${esc(window.__naSenha||'')}" oninput="window.__naSenha=this.value"></div>
+        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn" onclick="criarAssociadoLogin()">+ Cadastrar cooperado</button></div>
+      </div>
+      <table class="tbl" style="margin-top:8px"><thead><tr><th>Nome</th><th>Login</th><th>Apiários</th><th>Ação</th></tr></thead>
+        <tbody>${linhasCoop||'<tr><td colspan=4 class=muted>Nenhum cooperado ainda.</td></tr>'}</tbody></table>
     </div>`}`;
 }
 function selecionarEstabelecimento(){
@@ -853,7 +868,7 @@ async function gerenciarApiariosAssociado(associadoId, nome){
       </div>
     </div>`).join('') || '<div class="hint">Nenhum apiário ainda. Adicione o primeiro abaixo.</div>';
   $('app').innerHTML=`<h1>Apiários de ${esc(nome)}</h1>
-    <div><button class="btn sm ghost" onclick="TAB=(isBiotec()?4:5);render()">← voltar aos associados</button></div>
+    <div><button class="btn sm ghost" onclick="voltarDeApiarios()">← voltar</button></div>
     <div class="card" style="margin-top:12px"><h3>Apiários cadastrados</h3>
       ${linhas}
       <div class="apiario-linha"><div class="apiario-num">Novo apiário</div>
@@ -870,6 +885,11 @@ async function salvarApiarioAssoc(id){
   const municipio=$('aa-mun-'+id).value.trim(), geo=$('aa-geo-'+id).value.trim(), origem=$('aa-ori-'+id).value;
   const {error}=await sb.from('mel_apiario').update({municipio,geo,origem}).eq('id',id);
   if(error){ alert('Erro ao salvar: '+error.message); return; } flash('Apiário salvo.');
+}
+function voltarDeApiarios(){
+  // BIOTEC: volta ao detalhe do estabelecimento (card Cooperados). Gestor: volta à aba Associados.
+  if(isBiotec()){ window.__estabView='detalhe'; TAB=0; render(); }
+  else { TAB=5; render(); }
 }
 async function addApiarioAssoc(){
   const municipio=$('aa-new-mun').value.trim(), geo=$('aa-new-geo').value.trim(), origem=$('aa-new-ori').value;
