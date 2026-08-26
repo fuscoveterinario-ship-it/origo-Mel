@@ -694,6 +694,12 @@ async function telaEnvase(){
         <div class="field"><label>Florada</label><select id="en-florada" onchange="carregarEmb()"><option value="">—</option></select></div>
         <div class="field"><label>Embalagem</label><select id="en-emb" onchange="calcularEnvaseAutomatico()"><option>—</option></select></div>
       </div>
+      <h3>Cadastrar embalagem</h3>
+      <div class="row">
+        <div class="field"><label>Tipo de embalagem</label><select id="emb-tipo"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
+        <div class="field"><label>Peso / tamanho</label><input id="emb-peso" placeholder="ex.: 250g, 500g, 1 kg, 5 kg"></div>
+        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn ghost" onclick="addEmbalagem()">Adicionar embalagem</button></div>
+      </div>
       <div class="row"><div class="field"><label>Nº de potes</label><input id="en-potes" type="number" placeholder="0" oninput="calcularEnvaseAutomatico()"></div>
         <div class="field"><label>Kg envasados</label><input id="en-kg" type="number" placeholder="0"></div></div>
       <div id="en-lotes"><span class="muted">Selecione o produto para ver os lotes com saldo.</span></div>
@@ -780,7 +786,6 @@ async function registrarEnvase(){
 async function telaEstoque(){
   const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id);
   const linhas=[]; let total=0;
-  const optProd=(prods||[]).map(p=>`<option value="${p.id}">${esc(p.nome)}</option>`).join('');
   for(const p of (prods||[])){
     const {data:embs}=await sb.from('mel_embalagem').select('*').eq('produto_id',p.id);
     (embs||[]).forEach((x,i)=>{ total+=x.estoque;
@@ -788,25 +793,25 @@ async function telaEstoque(){
   }
   $('app').innerHTML=`<h1>Estoque de produto envasado</h1>
     <div class="row"><div class="card grow"><h3>Total em estoque</h3><div class="metric">${total}</div><div class="muted">potes</div></div></div>
-    <div class="card"><h3>Cadastrar embalagem</h3>
-      <div class="row">
-        <div class="field"><label>Produto</label><select id="emb-prod">${optProd}</select></div>
-        <div class="field"><label>Tipo de embalagem</label><select id="emb-tipo"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
-        <div class="field"><label>Peso / tamanho</label><input id="emb-peso" placeholder="ex.: 250g, 500g, 1 kg, 5 kg"></div>
-      </div>
-      <button class="btn" onclick="addEmbalagem()" ${optProd?'':'disabled'}>Adicionar embalagem</button>
-    </div>
     <div class="card"><h3>Por produto e tamanho</h3><table class="tbl"><thead><tr><th>Produto</th><th>Embalagem</th><th>Estoque</th><th>Ação</th></tr></thead><tbody>${linhas.join('')||'<tr><td colspan=4 class=muted>Sem embalagens.</td></tr>'}</tbody></table></div>`;
 }
 async function addEmbalagem(){
-  const produto_id=$('emb-prod').value, tipo=$('emb-tipo').value, peso=$('emb-peso').value.trim();
+  const produto_id=($('emb-prod')?.value)||($('en-prod')?.value), tipo=$('emb-tipo').value, peso=$('emb-peso').value.trim();
   if(!produto_id){ alert('Cadastre um produto primeiro.'); return; }
   if(!tipo||!peso){ alert('Selecione o tipo e informe o peso/tamanho da embalagem.'); return; }
   const {data:existente}=await sb.from('mel_embalagem').select('id').eq('produto_id',produto_id).eq('tipo',tipo).eq('peso',peso).maybeSingle();
   if(existente){ alert('Essa embalagem já está cadastrada para este produto.'); return; }
-  const {error}=await sb.from('mel_embalagem').insert({produto_id,tipo,peso,estoque:0,ativo:true});
+  const {data:nova,error}=await sb.from('mel_embalagem').insert({produto_id,tipo,peso,estoque:0,ativo:true}).select().maybeSingle();
   if(error){ alert('Erro ao cadastrar embalagem: '+error.message); return; }
-  flash('Embalagem cadastrada.'); render();
+  flash('Embalagem cadastrada.');
+  if($('en-prod')){
+    $('emb-peso').value='';
+    await carregarEmb();
+    if(nova&&$('en-emb')) $('en-emb').value=nova.id;
+    calcularEnvaseAutomatico();
+    return;
+  }
+  render();
 }
 async function saida(embId){
   const q=parseInt(prompt('Quantos potes saíram?','0'))||0; if(q<=0)return;
