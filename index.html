@@ -327,7 +327,9 @@ async function telaEstab(){
   if(isBiotec()){
     const {data:es}=await sb.from('mel_estabelecimento').select('*').order('criado_em');
     ESTABS=es||[];
-    if(ESTAB&&!ESTABS.some(x=>x.id===ESTAB.id)) ESTAB=ESTABS[0]||null;
+    const salvo=localStorage.getItem('origo_estab_id');
+    if(salvo && ESTABS.some(x=>x.id===salvo)) ESTAB=ESTABS.find(x=>x.id===salvo);
+    else if(ESTAB&&!ESTABS.some(x=>x.id===ESTAB.id)) ESTAB=ESTABS[0]||null;
   }
   const eAtual=ESTAB;
   const optsEstab=(ESTABS||[]).map(x=>`<option value="${x.id}" ${eAtual&&eAtual.id===x.id?'selected':''}>${esc(x.razao_social)} · ${esc(x.municipio)}/${esc(x.uf)}</option>`).join('');
@@ -343,7 +345,8 @@ async function telaEstab(){
         </div>
         <div class="row">
           <div class="field"><label>Documento</label><input id="ne-cnpj" placeholder="CNPJ ou CPF"></div>
-          <div class="field"><label>E-mail</label><input id="ne-email" type="email" placeholder="contato@email.com"></div>
+          <div class="field"><label>E-mail (login do gestor)</label><input id="ne-email" type="email" placeholder="contato@email.com"></div>
+          <div class="field"><label>Senha provisória</label><input id="ne-senha" type="text" placeholder="mínimo 6 caracteres"></div>
         </div>
         <div class="row">
           <div class="field"><label>Município</label><input id="ne-mun" placeholder="Município"></div>
@@ -421,14 +424,24 @@ async function addEstabelecimento(){
   const razao_social=$('ne-razao').value.trim(), cnpj=$('ne-cnpj').value.trim();
   const municipio=$('ne-mun').value.trim(), uf=$('ne-uf').value.trim().toUpperCase()||'PR';
   const tipo_inspecao=$('ne-insp').value, num_inspecao=$('ne-num-insp').value.trim();
-  const email=$('ne-email').value.trim()||null, tipo=$('ne-tipo').value;
+  const email=$('ne-email').value.trim(), senha=$('ne-senha').value, tipo=$('ne-tipo').value;
   if(!razao_social||!cnpj||!municipio||!uf||!tipo_inspecao||!num_inspecao){
     alert('Preencha nome, documento, município, UF e inspeção.'); return;
   }
-  const {data,error}=await sb.from('mel_estabelecimento').insert({razao_social,cnpj,municipio,uf,tipo_inspecao,num_inspecao,email,tipo}).select().maybeSingle();
-  if(error){ alert('Erro ao cadastrar estabelecimento: '+error.message); return; }
-  ESTAB=data; localStorage.setItem('origo_estab_id',data.id);
-  flash('Estabelecimento cadastrado.'); render();
+  if(!email||senha.length<6){ alert('Informe e-mail e senha do gestor (senha mínima 6 caracteres).'); return; }
+  const {data:{session}}=await sb.auth.getSession();
+  try{
+    const resp=await fetch(SUPABASE_URL+'/functions/v1/criar-estabelecimento',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+      body:JSON.stringify({tipo,razao_social,cnpj,municipio,uf,tipo_inspecao,num_inspecao,email,senha})
+    });
+    const out=await resp.json();
+    if(!resp.ok||out.error){ alert('Não foi possível cadastrar: '+(out.error||resp.status)); return; }
+    flash('Estabelecimento cadastrado com login: '+email);
+    if(out.estabelecimento_id) localStorage.setItem('origo_estab_id',out.estabelecimento_id);
+    TAB=0; render();
+  }catch(e){ alert('Erro de conexão: '+e.message); }
 }
 async function excluirEstabelecimento(){
   if(!ESTAB)return;
