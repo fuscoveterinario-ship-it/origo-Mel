@@ -317,7 +317,7 @@ function abas(){
 function render(){
   const tabs=abas();
   if(!ESTAB&&isBiotec()&&TAB!==0) TAB=0;
-  $('tabs').innerHTML=tabs.map((t,i)=>`<button class="tab ${TAB===i?'on':''}" onclick="TAB=${i};render()">${t}</button>`).join('');
+  $('tabs').innerHTML=tabs.map((t,i)=>`<button class="tab ${TAB===i?'on':''}" onclick="irAba(${i})">${t}</button>`).join('');
   if(!ESTAB&&!isBiotec()){ $('app').innerHTML='<div class="card"><h3>Sem estabelecimento</h3><div class="desc">Nenhum estabelecimento cadastrado ainda. Peça à BIOTEC para cadastrar o primeiro.</div></div>'; return; }
   $('app').innerHTML='<div class="estado"><div class="spin"></div>Carregando…</div>';
   if(isBiotec()){ [telaEstab,telaProdutos,telaFloradas,telaAuditoria,telaAssociados][TAB](); }
@@ -325,48 +325,61 @@ function render(){
   else if(ESTAB.tipo==='associacao'){ [telaInicio,telaFloradas,telaLotes,telaEnvase,telaEstoque,telaAssociados][TAB](); }
   else { [telaInicio,telaFloradas,telaLotes,telaEnvase,telaEstoque][TAB](); }
 }
+function irAba(i){
+  // BIOTEC: clicar na aba Estabelecimento volta para a LISTA (página 1)
+  if(isBiotec() && i===0){ window.__estabView='lista'; window.__estabNovo=false; }
+  TAB=i; render();
+}
 
 /* ===== ADMIN: ESTABELECIMENTO (lê e grava apiários/associados) ===== */
 async function telaEstab(){
   if(isBiotec()){
     const {data:es}=await sb.from('mel_estabelecimento').select('*').order('criado_em');
     ESTABS=es||[];
-    const salvo=localStorage.getItem('origo_estab_id');
-    if(salvo && ESTABS.some(x=>x.id===salvo)) ESTAB=ESTABS.find(x=>x.id===salvo);
-    else if(ESTAB&&!ESTABS.some(x=>x.id===ESTAB.id)) ESTAB=ESTABS[0]||null;
   }
-  const eAtual=ESTAB;
-  const optsEstab=(ESTABS||[]).map(x=>`<option value="${x.id}" ${eAtual&&eAtual.id===x.id?'selected':''}>${esc(x.razao_social)} · ${esc(x.municipio)}/${esc(x.uf)}</option>`).join('');
-  const adminBox=isBiotec()?`<div class="card"><h3>Gerenciar estabelecimentos</h3>
+  // BIOTEC tem duas páginas: 'lista' (default) e 'detalhe'. Não-BIOTEC vai direto ao detalhe do próprio.
+  if(!isBiotec()){ return telaEstabDetalhe(); }
+  if(window.__estabView==='detalhe' && ESTAB){ return telaEstabDetalhe(); }
+  // ---- PÁGINA 1: LISTA ----
+  const linhas=(ESTABS||[]).map(x=>`<tr>
+      <td><b>${esc(x.razao_social)}</b><br><span class="muted">${esc(x.municipio)}/${esc(x.uf)} · ${esc(x.tipo_inspecao)} ${esc(x.num_inspecao)}</span></td>
+      <td>${x.tipo==='associacao'?'<span class="pill">Associação / Cooperativa</span>':'<span class="pill grey">Produtor individual</span>'}</td>
+      <td><button class="btn sm" onclick="entrarEstabelecimento('${x.id}')">Entrar</button></td>
+    </tr>`).join('');
+  const formNovo=window.__estabNovo?`<div class="card"><h3>Novo estabelecimento</h3>
       <div class="row">
-        <div class="field"><label>Estabelecimento ativo</label><select id="sel-estab" onchange="selecionarEstabelecimento()">${optsEstab||'<option value="">Nenhum estabelecimento</option>'}</select></div>
-        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn sm ghost" onclick="excluirEstabelecimento()" ${eAtual?'':'disabled'}>Excluir estabelecimento</button></div>
+        <div class="field"><label>Tipo</label><select id="ne-tipo"><option value="individual">Produtor individual</option><option value="associacao">Associação / Cooperativa</option></select></div>
+        <div class="field"><label>Nome / Razão social</label><input id="ne-razao" placeholder="ex.: Apiário Boa Colmeia"></div>
       </div>
-      <div class="apiario-linha"><div class="apiario-num">Novo estabelecimento</div>
-        <div class="row">
-          <div class="field"><label>Tipo</label><select id="ne-tipo"><option value="individual">Produtor individual</option><option value="associacao">Associação / Cooperativa</option></select></div>
-          <div class="field"><label>Nome / Razão social</label><input id="ne-razao" placeholder="ex.: Apiário Boa Colmeia"></div>
-        </div>
-        <div class="row">
-          <div class="field"><label>Documento</label><input id="ne-cnpj" placeholder="CNPJ ou CPF"></div>
-          <div class="field"><label>E-mail (login do gestor)</label><input id="ne-email" type="email" placeholder="contato@email.com"></div>
-          <div class="field"><label>Senha provisória</label><input id="ne-senha" type="text" placeholder="mínimo 6 caracteres"></div>
-        </div>
-        <div class="row">
-          <div class="field"><label>Município</label><input id="ne-mun" placeholder="Município"></div>
-          <div class="field" style="flex:0 1 120px"><label>UF</label><input id="ne-uf" maxlength="2" value="PR"></div>
-          <div class="field"><label>Tipo inspeção</label><select id="ne-insp"><option value="SIM">SIM</option><option value="SIE">SIE</option><option value="SIF">SIF</option></select></div>
-          <div class="field"><label>Nº inspeção</label><input id="ne-num-insp" placeholder="001"></div>
-        </div>
-        <button class="btn" onclick="addEstabelecimento()">+ Cadastrar estabelecimento</button>
+      <div class="row">
+        <div class="field"><label>Documento</label><input id="ne-cnpj" placeholder="CNPJ ou CPF"></div>
+        <div class="field"><label>E-mail (login do gestor)</label><input id="ne-email" type="email" placeholder="contato@email.com"></div>
+        <div class="field"><label>Senha provisória</label><input id="ne-senha" type="text" placeholder="mínimo 6 caracteres"></div>
       </div>
-    </div>`:'';
-  if(!eAtual){
-    $('app').innerHTML=`<h1>Estabelecimento</h1>${adminBox}`;
-    return;
-  }
-  const e=eAtual;
-  const {data:apis}=await sb.from('mel_apiario').select('*').eq('estabelecimento_id',e.id).order('criado_em');
+      <div class="row">
+        <div class="field"><label>Município</label><input id="ne-mun" placeholder="Município"></div>
+        <div class="field" style="flex:0 1 120px"><label>UF</label><input id="ne-uf" maxlength="2" value="PR"></div>
+        <div class="field"><label>Tipo inspeção</label><select id="ne-insp"><option value="SIM">SIM</option><option value="SIE">SIE</option><option value="SIF">SIF</option></select></div>
+        <div class="field"><label>Nº inspeção</label><input id="ne-num-insp" placeholder="001"></div>
+      </div>
+      <div><button class="btn" onclick="addEstabelecimento()">+ Cadastrar</button>
+        <button class="btn ghost" onclick="window.__estabNovo=false;render()">Cancelar</button></div>
+    </div>`:`<div style="margin:8px 0 16px"><button class="btn" onclick="window.__estabNovo=true;render()">+ Novo estabelecimento</button></div>`;
+  $('app').innerHTML=`<h1>Estabelecimentos</h1>
+    <div class="banner info">Cadastre estabelecimentos (produtor individual ou associação/cooperativa) e clique em <b>Entrar</b> para gerenciar cada um.</div>
+    ${formNovo}
+    <div class="card"><h3>Cadastrados</h3><table class="tbl"><thead><tr><th>Nome</th><th>Tipo</th><th>Ação</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class=muted>Nenhum estabelecimento ainda.</td></tr>'}</tbody></table></div>`;
+}
+function entrarEstabelecimento(id){
+  ESTAB=(ESTABS||[]).find(e=>e.id===id)||null;
+  if(id) localStorage.setItem('origo_estab_id',id);
+  window.__estabView='detalhe'; TAB=0; render();
+}
+// ---- PÁGINA 2: DETALHE DE UM ESTABELECIMENTO ----
+async function telaEstabDetalhe(){
+  const e=ESTAB;
+  if(!e){ window.__estabView='lista'; return telaEstab(); }
+  const {data:apis}=await sb.from('mel_apiario').select('*').eq('estabelecimento_id',e.id).is('associado_id',null).order('criado_em');
   const {data:assoc}=await sb.from('mel_associado').select('*').eq('estabelecimento_id',e.id).eq('ativo',true).order('criado_em');
   const isAssoc=e.tipo==='associacao';
   const linhas=(apis||[]).map((ap,i)=>`
@@ -379,13 +392,13 @@ async function telaEstab(){
         <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn sm ghost" onclick="salvarApiario('${ap.id}')">Salvar</button></div>
       </div>
     </div>`).join('') || '<div class="hint">Nenhum apiário. Adicione o primeiro abaixo.</div>';
-  // quais associados já têm login vinculado
   const {data:usAssoc}=await sb.from('mel_usuario').select('associado_id').eq('estabelecimento_id',e.id).not('associado_id','is',null);
   const comLogin=new Set((usAssoc||[]).map(u=>u.associado_id));
   const listaAssoc=(assoc||[]).map(a=>`<span class="chip">${esc(a.nome)}${comLogin.has(a.id)?' ✓ login':' <span class="muted">sem login</span>'}</span>`).join('');
-  $('app').innerHTML=`<h1>Estabelecimento</h1>
-    ${adminBox}
-    <div class="card"><h3>Dados</h3>
+  const voltar=isBiotec()?`<div><button class="btn sm ghost" onclick="window.__estabView='lista';TAB=0;render()">← voltar à lista</button></div>`:'';
+  $('app').innerHTML=`<h1>${esc(e.razao_social)}</h1>
+    ${voltar}
+    <div class="card" style="margin-top:12px"><h3>Dados</h3>
       <div class="row">
         <div class="field"><label>Tipo</label><input value="${isAssoc?'Associação / Cooperativa':'Produtor individual'}" disabled></div>
         <div class="field"><label>${isAssoc?'Razão social':'Nome'}</label><input value="${esc(e.razao_social)}" disabled></div>
@@ -395,6 +408,7 @@ async function telaEstab(){
         <div class="field"><label>Município</label><input value="${esc(e.municipio)}/${esc(e.uf)}" disabled></div>
         <div class="field"><label>Inspeção</label><input value="${esc(e.tipo_inspecao)} ${esc(e.num_inspecao)}" disabled></div>
       </div>
+      ${isBiotec()?`<div style="margin-top:8px"><button class="btn sm ghost" onclick="excluirEstabelecimento()">Excluir estabelecimento</button></div>`:''}
     </div>
     ${!isAssoc?`<div class="card"><h3>Apiários</h3>
       ${linhas}
@@ -436,8 +450,8 @@ async function addEstabelecimento(){
     const out=await resp.json();
     if(!resp.ok||out.error){ alert('Não foi possível cadastrar: '+(out.error||resp.status)); return; }
     flash('Estabelecimento cadastrado com login: '+email);
-    if(out.estabelecimento_id) localStorage.setItem('origo_estab_id',out.estabelecimento_id);
-    TAB=0; render();
+    window.__estabNovo=false; window.__estabView='lista';
+    ESTABS=[]; render();
   }catch(e){ alert('Erro de conexão: '+e.message); }
 }
 async function excluirEstabelecimento(){
@@ -448,8 +462,7 @@ async function excluirEstabelecimento(){
   const {error}=await sb.from('mel_estabelecimento').delete().eq('id',id);
   if(error){ alert('Não foi possível excluir. Remova os dados vinculados primeiro ou verifique permissões: '+error.message); return; }
   localStorage.removeItem('origo_estab_id');
-  const {data:es}=await sb.from('mel_estabelecimento').select('*').order('criado_em');
-  ESTABS=es||[]; ESTAB=ESTABS[0]||null;
+  ESTAB=null; window.__estabView='lista'; ESTABS=[];
   flash('Estabelecimento excluído.'); render();
 }
 async function salvarApiario(id){
