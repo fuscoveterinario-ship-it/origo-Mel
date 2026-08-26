@@ -623,6 +623,7 @@ async function telaLotes(){
   const optFlor=habil.map(f=>`<option value="${f.id}" data-esp="${f.especie_id}">${esc(f.nome)}</option>`).join('');
   const optApi=(apis||[]).map(a=>`<option value="${a.id}">${esc(a.municipio)}</option>`).join('');
   const optAssoc=(assoc||[]).map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join('');
+  window.__lotesApis=apis||[]; // usados para escolher o apiário automaticamente
   const rows=(lotes||[]).map(l=>{const e=espById(l.especie_id)||{};return `<tr><td><b>${esc(l.codigo)}</b><br><span class="muted">${l.data_colheita}</span></td><td>${esc(e.nome_comum||'')}</td><td>${l.quantidade} ${l.unidade}<br><span class="muted">saldo ${l.saldo}</span></td><td><span class="pill green">${l.status}</span></td></tr>`;}).join('');
   $('app').innerHTML=`<h1>Lotes de colheita</h1>
     ${habil.length===0?'<div class="banner warn">Nenhuma florada habilitada. Crie a florada e aguarde a BIOTEC anexar o laudo.</div>':''}
@@ -630,9 +631,8 @@ async function telaLotes(){
       <div class="row">
         <div class="field"><label>Espécie</label><select id="l-esp">${optEsp}</select></div>
         <div class="field"><label>Florada (habilitadas)</label><select id="l-flor"><option value="">—</option>${optFlor}</select></div>
-        <div class="field"><label>Apiário</label><select id="l-api">${optApi}</select></div>
+        ${isAssoc?`<div class="field"><label>Associado (dono)</label><select id="l-assoc"><option value="">—</option>${optAssoc}</select></div>`:''}
       </div>
-      ${isAssoc?`<div class="field"><label>Associado (dono)</label><select id="l-assoc"><option value="">—</option>${optAssoc}</select></div>`:''}
       <div class="row">
         <div class="field"><label>Quantidade</label><input id="l-qtd" type="number" placeholder="0"></div>
         <div class="field"><label>Unidade</label><select id="l-un"><option value="kg">kg</option><option value="litro">litros</option></select></div>
@@ -644,7 +644,7 @@ async function telaLotes(){
     <div class="card"><h3>Lotes</h3><table class="tbl"><thead><tr><th>Lote</th><th>Espécie</th><th>Quantidade</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhum lote.</td></tr>'}</tbody></table></div>`;
 }
 async function addLote(){
-  const especie_id=$('l-esp').value, florada_id=$('l-flor').value, apiario_id=$('l-api').value;
+  const especie_id=$('l-esp').value, florada_id=$('l-flor').value;
   const quantidade=parseFloat($('l-qtd').value), unidade=$('l-un').value, data_colheita=$('l-data').value;
   const umid=$('l-umid').checked;
   const assocEl=$('l-assoc');
@@ -652,7 +652,17 @@ async function addLote(){
   if(!florada_id){ alert('Selecione uma florada habilitada.'); return; }
   if(!(quantidade>0)){ alert('Informe a quantidade.'); return; }
   if(!umid){ alert('Confirme o padrão de umidade.'); return; }
-  const esp=espById(especie_id);
+  // escolhe o apiário automaticamente: do associado (se houver) ou do estabelecimento
+  const apis=window.__lotesApis||[];
+  let apiario_id=null;
+  if(associado_id){
+    const doAssoc=apis.find(a=>a.associado_id===associado_id);
+    apiario_id=doAssoc?doAssoc.id:null;
+  } else {
+    const doEstab=apis.find(a=>!a.associado_id);
+    apiario_id=doEstab?doEstab.id:null;
+  }
+  if(!apiario_id){ alert('Cadastre um apiário primeiro'+(associado_id?' para este associado.':'.')); return; }
   const {error}=await sb.from('mel_lote').insert({
     codigo:'ML-'+data_colheita.slice(0,7).replace('-','')+'-TEMP', // trigger renumera se necessário
     estabelecimento_id:ESTAB.id, apiario_id, florada_id, especie_id, tipo:'mel',
