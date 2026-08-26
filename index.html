@@ -643,6 +643,12 @@ async function telaLotes(){
     </div>
     <div class="card"><h3>Lotes</h3><table class="tbl"><thead><tr><th>Lote</th><th>Espécie</th><th>Quantidade</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhum lote.</td></tr>'}</tbody></table></div>`;
 }
+function novoCodigoLote(data_colheita){
+  const baseData=(data_colheita||new Date().toISOString().slice(0,10)).slice(0,7).replace('-','');
+  const origem=(globalThis.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+String(Math.random());
+  const sufixo=origem.replace(/[^a-z0-9]/gi,'').slice(0,8).toUpperCase();
+  return 'ML-'+baseData+'-'+sufixo;
+}
 async function addLote(){
   const especie_id=$('l-esp').value, florada_id=$('l-flor').value;
   const quantidade=parseFloat($('l-qtd').value), unidade=$('l-un').value, data_colheita=$('l-data').value;
@@ -664,7 +670,7 @@ async function addLote(){
   }
   if(!apiario_id){ alert('Cadastre um apiário primeiro'+(associado_id?' para este associado.':'.')); return; }
   const {error}=await sb.from('mel_lote').insert({
-    codigo:'ML-'+data_colheita.slice(0,7).replace('-','')+'-TEMP', // trigger renumera se necessário
+    codigo:novoCodigoLote(data_colheita),
     estabelecimento_id:ESTAB.id, apiario_id, florada_id, especie_id, tipo:'mel',
     quantidade, unidade, saldo:quantidade, data_colheita, umidade_confirmada:umid, associado_id
   });
