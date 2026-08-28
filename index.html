@@ -530,7 +530,7 @@ async function telaProdutos(){
         <td><button class="btn sm ghost" onclick="removerEmbalagem('${x.id}')">Remover</button></td>
       </tr>`).join('')||'<tr><td colspan=5 class=muted>Nenhuma embalagem cadastrada.</td></tr>';
     cards.push(`<div class="card">
-      <h3>${esc(p.nome)} <span class="muted" style="font-weight:400">· ${esc(e.nome_comum||'')} · ${esc(p.tipo||'mel')}${e.umidade_max?(' · umidade '+umidTxt(e)):''}${p.num_selo_arte?(' · Selo Arte '+esc(p.num_selo_arte)):' · sem Selo Arte'}</span></h3>
+      <h3>${esc(p.nome)} <span class="muted" style="font-weight:400">· ${esc(e.nome_comum||'')} · ${esc(p.tipo||'mel')}${p.num_selo_arte?(' · Selo Arte '+esc(p.num_selo_arte)):' · sem Selo Arte'}</span></h3>
       <table class="tbl"><thead><tr><th>Embalagem</th><th>Peso / tamanho</th><th>Estoque</th><th>Situação</th><th></th></tr></thead>
         <tbody>${embRows}</tbody></table>
       <div style="margin-top:10px">
