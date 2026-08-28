@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Órigo Mel — Rastreabilidade do Lote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cera:#FBF4E6; --creme:#FFFDF7; --creme2:#F6EDD9;
+    --mel:#E8B84B; --mel-escuro:#B8860B; --mel-fundo:rgba(232,184,75,.16);
+    --tinta:#3D3320; --tinta-suave:#8A7A55;
+    --salva:#6B7A4A; --linha:#EADBB9; --linha-forte:#E0CB9E;
+    --serif:'Fraunces',Georgia,serif; --sans:'Inter',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--cera);color:var(--tinta);line-height:1.5;
+    background-image:radial-gradient(1000px 500px at 82% -10%, rgba(232,184,75,.16), transparent 68%);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased;min-height:100vh}
+  .moldura{position:relative;border:1.5px solid #C8A355;border-radius:22px;margin:14px;min-height:calc(100vh - 28px);
+    background:linear-gradient(180deg, rgba(255,253,247,.5), transparent 120px)}
+  @media (max-width:768px){.moldura{margin:6px;border-radius:16px}}
+  .wrap{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:40px 20px 60px}
+  .brand{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:22px}
+  .glifo{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#F3D07A,var(--mel) 55%,var(--mel-escuro));
+    display:flex;align-items:center;justify-content:center;color:#4A3208;font-family:var(--serif);font-size:26px;font-weight:700;font-style:italic}
+  .marca{font-family:var(--serif);font-size:22px;font-weight:600;color:var(--tinta);line-height:1}
+  .marca b{color:var(--mel-escuro);font-weight:700;font-style:italic}
+  .sub{font-size:10px;letter-spacing:4px;color:var(--tinta-suave)}
+  .card{background:var(--creme);color:var(--tinta);border-radius:18px;padding:26px;font-family:var(--serif);
+    border:1px solid var(--linha);box-shadow:0 14px 40px rgba(120,90,20,.14)}
+  .seal{display:inline-flex;align-items:center;gap:7px;background:var(--salva);color:#F7F3E7;border-radius:999px;
+    padding:6px 15px;font-size:13px;font-weight:700;font-family:var(--sans);margin-bottom:12px}
+  .topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+  .logo-prod{max-height:48px;max-width:120px;object-fit:contain}
+  h2{font-size:22px;margin-bottom:4px;font-weight:600}
+  .cod{font-family:var(--sans);font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--mel-escuro);word-break:break-all;margin-bottom:2px}
+  .tagline{color:var(--tinta-suave);font-size:13px;margin-bottom:6px}
+  .line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--linha);font-size:14px;gap:12px}
+  .line .k{color:var(--tinta-suave);font-family:var(--sans);font-size:13px}.line .v{font-weight:600;text-align:right}
+  .sectitle{margin-top:16px;font-family:var(--sans);font-size:12px;letter-spacing:1px;color:var(--tinta-suave);text-transform:uppercase}
+  .verif{padding:9px 0;border-bottom:1px solid var(--linha);font-size:14px;display:flex;justify-content:space-between;gap:12px}
+  .verif .k{color:var(--tinta-suave);font-family:var(--sans);font-size:13px}
+  .verif .v{font-weight:600;color:var(--salva)}
+  .foot{margin-top:14px;color:#888;font-size:11px;text-align:center}
+  .estado{text-align:center;color:var(--tinta-suave);padding:40px 10px;font-size:15px}
+  .spin{width:26px;height:26px;border:3px solid var(--linha-forte);border-top-color:var(--mel-escuro);
+    border-radius:50%;animation:g 1s linear infinite;margin:0 auto 12px}
+  @keyframes g{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="moldura">
+  <div class="wrap">
+    <div class="brand">
+      <div class="glifo">ó</div>
+      <div><div class="marca">Óri<b>go</b></div><div class="sub">MEL · RASTREABILIDADE DO LOTE</div></div>
+    </div>
+    <div id="conteudo">
+      <div class="estado"><div class="spin"></div>Carregando rastreabilidade do lote…</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://vmzmthtsxiwwjtpupclv.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_haUPRxXYuiSrLZvc1YetBw_6vBzDc9M';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+const el = document.getElementById('conteudo');
+const params = new URLSearchParams(location.search);
+const loteId = params.get('l');   // ?l=<uuid do lote>
+
+function assetUrl(caminho){ return SUPABASE_URL+'/storage/v1/object/public/assets/'+caminho; }
+function fmtQtd(q,u){ const n=parseFloat(q); return (isNaN(n)?q:n)+' '+(u||''); }
+
+function indisponivel(msg){
+  el.innerHTML = `<div class="card" style="text-align:center">
+    <h2>Página indisponível</h2>
+    <div class="tagline" style="margin-top:8px">${msg||'Este lote ainda não está disponível para consulta.'}</div>
+  </div>`;
+}
+
+async function carregar(){
+  if(!loteId){ indisponivel('QR inválido: lote não informado.'); return; }
+  try{
+    const { data: lote, error } = await sb.from('mel_qr_lote')
+      .select('*').eq('lote_id', loteId).maybeSingle();
+    if(error) throw error;
+    if(!lote){ indisponivel('Lote em verificação pela BIOTEC ou não encontrado.'); return; }
+
+    const isAssoc = lote.tipo_estab === 'associacao';
+    const apiarioTxt = [lote.apiario_municipio, lote.apiario_uf].filter(Boolean).join('/')
+      + (lote.apiario_bioma ? (' · '+lote.apiario_bioma) : '');
+    const logo = lote.logo_url ? `<img class="logo-prod" src="${assetUrl(lote.logo_url)}" alt="logo produtor">` : '';
+    const foto = lote.foto_url ? `<img src="${assetUrl(lote.foto_url)}" alt="foto" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--linha-forte)">` : '';
+
+    const linhasAssoc = isAssoc ? `
+      <div class="line"><span class="k">Associado</span><span class="v">${lote.associado||'—'}</span></div>
+      <div class="line"><span class="k">Apiários do associado</span><span class="v">${lote.apiarios_associado!=null?lote.apiarios_associado:'—'}</span></div>` : '';
+
+    el.innerHTML = `<div class="card">
+      <div class="topo">
+        ${logo || '<span></span>'}
+        <span class="seal">✓ Lote rastreado</span>
+      </div>
+      <div class="cod">${lote.codigo||''}</div>
+      ${foto?`<div style="display:flex;align-items:center;gap:12px;margin:6px 0 4px">${foto}<div><div style="font-family:var(--serif);font-size:18px;font-weight:600">${isAssoc?(lote.associado||''):(lote.produtor||'')}</div><div class="tagline" style="margin:0">${isAssoc?'Apicultor associado':'Produtor'}</div></div></div>`:''}
+      <h2>${lote.produtor||''}</h2>
+      <div class="tagline">${isAssoc?'Associação de produtores · ':''}Rastreabilidade verificada em tempo real</div>
+
+      <div class="line"><span class="k">Origem</span><span class="v">${lote.municipio||''}/${lote.uf||''}</span></div>
+      <div class="line"><span class="k">Inspeção</span><span class="v">${lote.tipo_inspecao||''} ${lote.num_inspecao||''}</span></div>
+      ${linhasAssoc}
+      <div class="line"><span class="k">Florada</span><span class="v">${lote.florada||'—'}</span></div>
+      <div class="line"><span class="k">Espécie</span><span class="v">${lote.especie||''}${lote.nome_cientifico?(' · '+lote.nome_cientifico):''}</span></div>
+      <div class="line"><span class="k">Quantidade do lote</span><span class="v">${fmtQtd(lote.quantidade,lote.unidade)}</span></div>
+      <div class="line"><span class="k">Data da colheita</span><span class="v">${lote.data_colheita||'—'}</span></div>
+      ${lote.data_extracao?`<div class="line"><span class="k">Data da extração</span><span class="v">${lote.data_extracao}</span></div>`:''}
+      <div class="line"><span class="k">Apiário</span><span class="v">${apiarioTxt||'—'}</span></div>
+      ${lote.laudo_numero?`<div class="line"><span class="k">Laudo da florada</span><span class="v">nº ${lote.laudo_numero}${lote.laudo_emissao?(' · '+lote.laudo_emissao):''}</span></div>`:''}
+
+      <div class="sectitle">Itens verificados</div>
+      <div class="verif"><span class="k">Umidade</span><span class="v">Menor que 20%</span></div>
+      <div class="verif"><span class="k">Cor e odor</span><span class="v">Característicos</span></div>
+      <div class="verif"><span class="k">Limpeza na estrutura de extração</span><span class="v">Realizada</span></div>
+
+      <div class="foot">Rastreabilidade e certificação de origem · Emitido pela BIOTEC Consultoria</div>
+    </div>`;
+  }catch(err){
+    indisponivel('Não foi possível carregar agora. Tente novamente em instantes.');
+    console.error(err);
+  }
+}
+carregar();
+</script>
+</body>
+</html>
