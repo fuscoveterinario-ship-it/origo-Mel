@@ -840,18 +840,37 @@ async function telaFloradas(){
     <div class="card"><h3>Floradas</h3><table class="tbl"><thead><tr><th>Florada</th><th>Situação</th><th>Laudo da Florada</th></tr></thead><tbody>${rows||'<tr><td colspan=3 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
 }
 async function telaFloradasBiotec(){
-  const {data:fl}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
-  const rows=(fl||[]).map(f=>{const e=espById(f.especie_id)||{};const vig=laudoVigente(f);
+  // BIOTEC enxerga as floradas de TODOS os estabelecimentos (não só o selecionado).
+  const {data:fl}=await sb.from('mel_florada').select('*').order('criado_em');
+  // mapa de estabelecimentos (nome/tipo) — reaproveita ESTABS, com fallback ao banco
+  let estabs=ESTABS;
+  if(!estabs||!estabs.length){ const {data:es}=await sb.from('mel_estabelecimento').select('*'); estabs=es||[]; }
+  const estabById=id=>(estabs||[]).find(e=>e.id===id)||{};
+  // associados que aparecem nessas floradas (para mostrar quem solicitou dentro da associação)
+  const assocIds=[...new Set((fl||[]).map(f=>f.associado_id).filter(Boolean))];
+  let assocMap={};
+  if(assocIds.length){ const {data:as}=await sb.from('mel_associado').select('id,nome').in('id',assocIds); (as||[]).forEach(a=>assocMap[a.id]=a.nome); }
+  // ordena: pendentes primeiro (aguardando ação da BIOTEC)
+  const ordem=(fl||[]).slice().sort((a,b)=>(a.status==='pendente'?0:1)-(b.status==='pendente'?0:1));
+  const rows=ordem.map(f=>{const e=espById(f.especie_id)||{};const vig=laudoVigente(f);
+    const est=estabById(f.estabelecimento_id);
+    const nomeEstab=est.razao_social||'(estabelecimento removido)';
+    const ehAssoc=est.tipo==='associacao';
+    const solicitante=`<b>${esc(nomeEstab)}</b>`+
+      (ehAssoc?`<br><span class="muted">Associação · associado: ${esc(f.associado_id?(assocMap[f.associado_id]||'—'):'—')}</span>`
+              :`<br><span class="muted">${esc(est.municipio||'')}${est.uf?('/'+esc(est.uf)):''} · produtor individual</span>`);
     const pill=f.status==='pendente'?'grey':(vig?'green':'red');const txt=f.status==='pendente'?'Pendente':(vig?'Habilitada · vigente':'Laudo vencido');
     const acao=(f.status==='pendente'||!vig)?`<button class="btn sm" onclick="habilitarFlorada('${f.id}')">Habilitar + laudo</button>`:`<span class="muted">laudo ${esc(f.laudo_numero||'')}</span>`;
     const pdf=f.laudo_pdf
       ? `<a class="btn sm ghost" href="${linkLaudo(f.laudo_pdf)}" target="_blank">Baixar PDF</a> <button class="btn sm ghost" onclick="anexarPdfFlorada('${f.id}')">Trocar</button>`
       : (f.status!=='pendente'?`<button class="btn sm" onclick="anexarPdfFlorada('${f.id}')">Anexar PDF</button>`:'<span class="muted">—</span>');
-    return `<tr><td><b>${esc(f.nome)}</b><br><span class="muted">${esc(e.nome_comum||'')}</span></td><td>${f.laudo_emissao||'<span class=muted>sem laudo</span>'}</td><td><span class="pill ${pill}">${txt}</span></td><td>${pdf}</td><td>${acao}</td></tr>`;}).join('');
+    return `<tr><td>${solicitante}</td><td><b>${esc(f.nome)}</b><br><span class="muted">${esc(e.nome_comum||'')}</span></td><td>${f.laudo_emissao||'<span class=muted>sem laudo</span>'}</td><td><span class="pill ${pill}">${txt}</span></td><td>${pdf}</td><td>${acao}</td></tr>`;}).join('');
+  const pend=(fl||[]).filter(f=>f.status==='pendente').length;
   $('app').innerHTML=`<h1>Floradas & Laudos</h1>
     <div class="banner info">Só a BIOTEC habilita, anexando laudo válido por 12 meses. Ao habilitar, anexe o PDF do laudo — o produtor consegue baixar.</div>
+    ${pend?`<div class="banner warn">${pend} florada(s) aguardando habilitação da BIOTEC.</div>`:''}
     <input type="file" id="pdf-input" accept="application/pdf" style="display:none">
-    <div class="card"><h3>Floradas</h3><table class="tbl"><thead><tr><th>Florada</th><th>Laudo</th><th>Situação</th><th>Laudo PDF</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=5 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
+    <div class="card"><h3>Floradas de todos os estabelecimentos</h3><table class="tbl"><thead><tr><th>Produtor / Solicitante</th><th>Florada</th><th>Laudo</th><th>Situação</th><th>Laudo PDF</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=6 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
 }
 async function addFlorada(){
   const nome=$('f-nome').value.trim(), especie_id=$('f-esp').value;
