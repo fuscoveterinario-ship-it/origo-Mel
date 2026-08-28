@@ -530,17 +530,22 @@ async function telaProdutos(){
         <td><button class="btn sm ghost" onclick="removerEmbalagem('${x.id}')">Remover</button></td>
       </tr>`).join('')||'<tr><td colspan=5 class=muted>Nenhuma embalagem cadastrada.</td></tr>';
     cards.push(`<div class="card">
-      <h3>${esc(p.nome)} <span class="muted" style="font-weight:400">· ${esc(e.nome_comum||'')}${e.umidade_max?(' · umidade '+umidTxt(e)):''}${p.num_selo_arte?(' · Selo '+esc(p.num_selo_arte)):''}</span></h3>
-      <div class="row">
-        <div class="field"><label>Tipo de embalagem</label>
-          <select id="emb-tipo-${p.id}"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
-        <div class="field"><label>Peso / tamanho</label>
-          <input id="emb-peso-${p.id}" placeholder="ex.: 250g, 500g, 1 kg, 5 kg"></div>
-        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px">
-          <button class="btn ghost" onclick="addEmbalagem('${p.id}')">Adicionar embalagem</button></div>
-      </div>
-      <table class="tbl"><thead><tr><th>Tipo</th><th>Peso / tamanho</th><th>Estoque</th><th>Situação</th><th></th></tr></thead>
+      <h3>${esc(p.nome)} <span class="muted" style="font-weight:400">· ${esc(e.nome_comum||'')} · ${esc(p.tipo||'mel')}${e.umidade_max?(' · umidade '+umidTxt(e)):''}${p.num_selo_arte?(' · Selo Arte '+esc(p.num_selo_arte)):' · sem Selo Arte'}</span></h3>
+      <table class="tbl"><thead><tr><th>Embalagem</th><th>Peso / tamanho</th><th>Estoque</th><th>Situação</th><th></th></tr></thead>
         <tbody>${embRows}</tbody></table>
+      <div style="margin-top:10px">
+        <button class="btn sm ghost" onclick="toggleAddEmb('${p.id}')" id="emb-btn-${p.id}">+ Adicionar embalagem</button>
+      </div>
+      <div id="emb-form-${p.id}" style="display:none;margin-top:10px">
+        <div class="row">
+          <div class="field"><label>Tipo de embalagem</label>
+            <select id="emb-tipo-${p.id}"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
+          <div class="field"><label>Peso / tamanho</label>
+            <input id="emb-peso-${p.id}" placeholder="ex.: 250g, 500g, 1 kg, 5 kg"></div>
+          <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px">
+            <button class="btn ghost" onclick="addEmbalagem('${p.id}')">Salvar embalagem</button></div>
+        </div>
+      </div>
     </div>`);
   }
   // opções de florada para o NOME do produto
@@ -904,6 +909,13 @@ async function addEmbalagem(produtoId){
   if(!nova){ alert('A embalagem não foi salva (sem permissão). Atualize a página e tente novamente.'); return; }
   flash('Embalagem cadastrada.');
   render();
+}
+function toggleAddEmb(pid){
+  const form=$('emb-form-'+pid), btn=$('emb-btn-'+pid);
+  if(!form)return;
+  const abrir=form.style.display==='none';
+  form.style.display=abrir?'':'none';
+  if(btn) btn.textContent=abrir?'Cancelar':'+ Adicionar embalagem';
 }
 async function removerEmbalagem(embId){
   if(!confirm('Remover esta embalagem do produto?'))return;
