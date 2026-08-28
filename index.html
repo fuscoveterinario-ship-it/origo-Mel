@@ -310,8 +310,8 @@ function abas(){
   if(isAssociado()) return ['Início','Minhas Floradas','Meus Lotes']; // associado: sem envase/estoque
   // gestor: se for associação, ganha aba Associados
   return ESTAB && ESTAB.tipo==='associacao'
-    ? ['Início','Floradas','Produtos','Lotes','Envase','Estoque','Associados']
-    : ['Início','Floradas','Produtos','Lotes','Envase','Estoque'];
+    ? ['Início','Floradas','Produtos','Lotes','Envase','Estoque','QR Code','Associados']
+    : ['Início','Floradas','Produtos','Lotes','Envase','Estoque','QR Code'];
 }
 function render(){
   const tabs=abas();
@@ -321,8 +321,8 @@ function render(){
   $('app').innerHTML='<div class="estado"><div class="spin"></div>Carregando…</div>';
   if(isBiotec()){ [telaEstab,telaProdutos,telaFloradas,telaAuditoria][TAB](); }
   else if(isAssociado()){ [telaInicio,telaFloradas,telaLotes][TAB](); }
-  else if(ESTAB.tipo==='associacao'){ [telaInicio,telaFloradas,telaProdutos,telaLotes,telaEnvase,telaEstoque,telaAssociados][TAB](); }
-  else { [telaInicio,telaFloradas,telaProdutos,telaLotes,telaEnvase,telaEstoque][TAB](); }
+  else if(ESTAB.tipo==='associacao'){ [telaInicio,telaFloradas,telaProdutos,telaLotes,telaEnvase,telaEstoque,telaQR,telaAssociados][TAB](); }
+  else { [telaInicio,telaFloradas,telaProdutos,telaLotes,telaEnvase,telaEstoque,telaQR][TAB](); }
 }
 function irAba(i){
   // BIOTEC: clicar na aba Estabelecimento volta para a LISTA (página 1)
@@ -893,6 +893,72 @@ async function telaEstoque(){
   $('app').innerHTML=`<h1>Estoque de produto envasado</h1>
     <div class="row"><div class="card grow"><h3>Total em estoque</h3><div class="metric">${total}</div><div class="muted">potes</div></div></div>
     <div class="card"><h3>Por produto e tamanho</h3><table class="tbl"><thead><tr><th>Produto</th><th>Embalagem</th><th>Estoque</th><th>Ação</th></tr></thead><tbody>${linhas.join('')||'<tr><td colspan=4 class=muted>Sem embalagens.</td></tr>'}</tbody></table></div>`;
+}
+/* ===== QR CODE DO ESTABELECIMENTO ===== */
+function urlVerifica(){
+  // deriva a partir da URL atual: troca o arquivo final por verifica.html
+  const base=location.href.split('?')[0].split('#')[0].replace(/[^/]*$/,'');
+  return base+'verifica.html?e='+ESTAB.id;
+}
+function carregarScript(src){
+  return new Promise((res,rej)=>{
+    if([...document.scripts].some(s=>s.src===src)){ res(); return; }
+    const s=document.createElement('script'); s.src=src;
+    s.onload=()=>res(); s.onerror=()=>rej(new Error('falha ao carregar '+src));
+    document.head.appendChild(s);
+  });
+}
+async function telaQR(){
+  const link=urlVerifica();
+  $('app').innerHTML=`<h1>QR Code do estabelecimento</h1>
+    <div class="banner info">Este é o selo público do estabelecimento. Imprima no rótulo ou material: ao ler, o consumidor vê a rastreabilidade em tempo real.</div>
+    <div class="card" style="text-align:center">
+      <div id="qr-box" style="display:inline-block;background:#fff;padding:16px;border-radius:14px;border:1px solid var(--linha)">
+        <canvas id="qr-canvas" width="320" height="320"></canvas>
+      </div>
+      <div class="muted" style="margin-top:10px;word-break:break-all">${esc(link)}</div>
+      <div class="mt" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+        <button class="btn" onclick="baixarQR('jpg')">Baixar JPG</button>
+        <button class="btn ghost" onclick="baixarQR('pdf')">Baixar PDF</button>
+        <a class="btn ghost" href="${link}" target="_blank">Abrir página</a>
+      </div>
+    </div>`;
+  try{
+    await carregarScript('https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js');
+    const canvas=$('qr-canvas');
+    await QRCode.toCanvas(canvas,link,{width:320,margin:1,color:{dark:'#3D3320',light:'#ffffff'}});
+    window.__qrLink=link;
+  }catch(e){
+    $('qr-box').innerHTML='<span class="muted">Não foi possível gerar o QR agora. Verifique a conexão e recarregue.</span>';
+  }
+}
+async function baixarQR(fmt){
+  const canvas=$('qr-canvas'); if(!canvas){ alert('QR ainda não gerado.'); return; }
+  const nome=(ESTAB.razao_social||'estabelecimento').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  if(fmt==='jpg'){
+    // fundo branco garantido para JPG
+    const tmp=document.createElement('canvas'); tmp.width=canvas.width+32; tmp.height=canvas.height+32;
+    const ctx=tmp.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,tmp.width,tmp.height);
+    ctx.drawImage(canvas,16,16);
+    const a=document.createElement('a');
+    a.href=tmp.toDataURL('image/jpeg',0.95); a.download='qrcode-'+nome+'.jpg'; a.click();
+    return;
+  }
+  // PDF
+  try{
+    await carregarScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({unit:'mm',format:'a4'});
+    const img=canvas.toDataURL('image/png');
+    const size=90, x=(210-size)/2, y=40;
+    doc.setFontSize(16); doc.text('Órigo Mel · Rastreabilidade', 105, 24, {align:'center'});
+    doc.setFontSize(12); doc.text(String(ESTAB.razao_social||''), 105, 33, {align:'center'});
+    doc.addImage(img,'PNG',x,y,size,size);
+    doc.setFontSize(9); doc.text(window.__qrLink||urlVerifica(), 105, y+size+10, {align:'center', maxWidth:180});
+    doc.save('qrcode-'+nome+'.pdf');
+  }catch(e){
+    alert('Não foi possível gerar o PDF agora. Tente o JPG ou recarregue a página.');
+  }
 }
 async function addEmbalagem(produtoId){
   // Chamado da aba Produtos com o id do produto. Campos são por-produto: emb-tipo-<id>, emb-peso-<id>.
