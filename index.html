@@ -514,16 +514,35 @@ async function criarAssociadoLogin(){
 /* ===== ADMIN: PRODUTOS ===== */
 async function telaProdutos(){
   const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
-  const rows=[];
+  const cards=[];
   for(const p of (prods||[])){
     const e=espById(p.especie_id)||{};
-    const {data:embs}=await sb.from('mel_embalagem').select('*').eq('produto_id',p.id);
-    const embTxt=(embs||[]).map(x=>x.tipo+' '+x.peso+' ('+x.estoque+')').join('<br>')||'<span class="muted">sem embalagem</span>';
-    rows.push(`<tr><td><b>${esc(p.nome)}</b></td><td>${esc(e.nome_comum||'')}<br><span class="muted">${e.ramo==='apicultura'?'florada':'espécie+emb.'}</span></td><td>${embTxt}</td><td>${e.umidade_max?umidTxt(e):''}</td><td>${esc(p.num_selo_arte||'—')}</td></tr>`);
+    const {data:embs}=await sb.from('mel_embalagem').select('*').eq('produto_id',p.id).order('criado_em');
+    // linhas de embalagens já cadastradas neste produto
+    const embRows=(embs||[]).map(x=>`<tr>
+        <td>${esc(x.tipo)}</td>
+        <td>${esc(x.peso)}</td>
+        <td>${x.estoque||0}</td>
+        <td>${x.ativo===false?'<span class="pill grey">inativa</span>':'<span class="pill green">ativa</span>'}</td>
+        <td><button class="btn sm ghost" onclick="removerEmbalagem('${x.id}')">Remover</button></td>
+      </tr>`).join('')||'<tr><td colspan=5 class=muted>Nenhuma embalagem cadastrada.</td></tr>';
+    cards.push(`<div class="card">
+      <h3>${esc(p.nome)} <span class="muted" style="font-weight:400">· ${esc(e.nome_comum||'')}${e.umidade_max?(' · umidade '+umidTxt(e)):''}${p.num_selo_arte?(' · Selo '+esc(p.num_selo_arte)):''}</span></h3>
+      <div class="row">
+        <div class="field"><label>Tipo de embalagem</label>
+          <select id="emb-tipo-${p.id}"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
+        <div class="field"><label>Peso / tamanho</label>
+          <input id="emb-peso-${p.id}" placeholder="ex.: 250g, 500g, 1 kg, 5 kg"></div>
+        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px">
+          <button class="btn ghost" onclick="addEmbalagem('${p.id}')">Adicionar embalagem</button></div>
+      </div>
+      <table class="tbl"><thead><tr><th>Tipo</th><th>Peso / tamanho</th><th>Estoque</th><th>Situação</th><th></th></tr></thead>
+        <tbody>${embRows}</tbody></table>
+    </div>`);
   }
   const optsEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)} — ${esc(e.nome_cientifico)}</option>`).join('');
   $('app').innerHTML=`<h1>Produtos</h1>
-    <div class="banner info">Cada produto pode ter vários tamanhos de embalagem. Apis usa florada no QR; sem ferrão usa espécie + embalagem.</div>
+    <div class="banner info">Cadastre o produto e, em cada produto, os tamanhos de embalagem que ele usa. No envase, você apenas seleciona a embalagem já cadastrada aqui.</div>
     <div class="card"><h3>Novo produto</h3>
       <div class="row"><div class="field"><label>Nome</label><input id="p-nome" placeholder="ex.: Mel de Jataí"></div>
         <div class="field"><label>Espécie</label><select id="p-esp">${optsEsp}</select></div></div>
@@ -531,9 +550,8 @@ async function telaProdutos(){
         <div class="field"><label>Nº Selo Arte</label><input id="p-selo" placeholder="SA-…"></div></div>
       <button class="btn" onclick="addProduto()">Adicionar produto</button>
     </div>
-    <div class="card"><h3>Produtos cadastrados</h3>
-      <table class="tbl"><thead><tr><th>Produto</th><th>Identidade</th><th>Embalagens (estoque)</th><th>Umidade</th><th>Selo</th></tr></thead><tbody>${rows.join('')||'<tr><td colspan=5 class=muted>Nenhum produto ainda.</td></tr>'}</tbody></table>
-    </div>`;
+    <h2 style="margin:18px 0 6px">Produtos e embalagens</h2>
+    ${cards.join('')||'<div class="card"><span class="muted">Nenhum produto ainda. Cadastre o primeiro acima.</span></div>'}`;
 }
 async function addProduto(){
   const nome=$('p-nome').value.trim(), especie_id=$('p-esp').value, tipo=$('p-tipo').value, num_selo_arte=$('p-selo').value.trim()||null;
@@ -720,12 +738,6 @@ async function telaEnvase(){
         <div class="field"><label>Florada</label><select id="en-florada" onchange="carregarEmb()"><option value="">—</option></select></div>
         <div class="field"><label>Embalagem</label><select id="en-emb" onchange="calcularEnvaseAutomatico()"><option>—</option></select></div>
       </div>
-      <h3>Cadastrar embalagem</h3>
-      <div class="row">
-        <div class="field"><label>Tipo de embalagem</label><select id="emb-tipo"><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
-        <div class="field"><label>Peso / tamanho</label><input id="emb-peso" placeholder="ex.: 250g, 500g, 1 kg, 5 kg"></div>
-        <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn ghost" onclick="addEmbalagem()">Adicionar embalagem</button></div>
-      </div>
       <div class="row"><div class="field"><label>Nº de potes</label><input id="en-potes" type="number" placeholder="0" oninput="calcularEnvaseAutomatico()"></div>
         <div class="field"><label>Kg envasados</label><input id="en-kg" type="number" placeholder="0"></div></div>
       <div id="en-lotes"><span class="muted">Selecione o produto para ver os lotes com saldo.</span></div>
@@ -741,7 +753,7 @@ async function carregarEmb(){
   const prodId=$('en-prod').value; if(!prodId)return;
   const prod=(await sb.from('mel_produto').select('*').eq('id',prodId).maybeSingle()).data;
   const {data:embs}=await sb.from('mel_embalagem').select('*').eq('produto_id',prodId).eq('ativo',true);
-  $('en-emb').innerHTML=(embs||[]).map(e=>`<option value="${e.id}" data-peso="${esc(e.peso)}">${esc(e.tipo)} ${esc(e.peso)}</option>`).join('')||'<option value="">cadastre embalagem</option>';
+  $('en-emb').innerHTML=(embs||[]).map(e=>`<option value="${e.id}" data-peso="${esc(e.peso)}">${esc(e.tipo)} ${esc(e.peso)}</option>`).join('')||'<option value="">cadastre a embalagem na aba Produtos</option>';
   const lotesEsp=(window.__lotesEnv||[]).filter(l=>l.especie_id===prod.especie_id);
   const floradaIds=[...new Set(lotesEsp.map(l=>l.florada_id).filter(Boolean))];
   const floradas=(window.__floradasEnv||[]).filter(f=>floradaIds.includes(f.id));
@@ -821,22 +833,26 @@ async function telaEstoque(){
     <div class="row"><div class="card grow"><h3>Total em estoque</h3><div class="metric">${total}</div><div class="muted">potes</div></div></div>
     <div class="card"><h3>Por produto e tamanho</h3><table class="tbl"><thead><tr><th>Produto</th><th>Embalagem</th><th>Estoque</th><th>Ação</th></tr></thead><tbody>${linhas.join('')||'<tr><td colspan=4 class=muted>Sem embalagens.</td></tr>'}</tbody></table></div>`;
 }
-async function addEmbalagem(){
-  const produto_id=($('emb-prod')?.value)||($('en-prod')?.value), tipo=$('emb-tipo').value, peso=$('emb-peso').value.trim();
+async function addEmbalagem(produtoId){
+  // Chamado da aba Produtos com o id do produto. Campos são por-produto: emb-tipo-<id>, emb-peso-<id>.
+  const produto_id=produtoId||($('en-prod')?.value);
   if(!produto_id){ alert('Cadastre um produto primeiro.'); return; }
+  const tipoEl=$('emb-tipo-'+produto_id)||$('emb-tipo');
+  const pesoEl=$('emb-peso-'+produto_id)||$('emb-peso');
+  const tipo=tipoEl?tipoEl.value:'', peso=pesoEl?pesoEl.value.trim():'';
   if(!tipo||!peso){ alert('Selecione o tipo e informe o peso/tamanho da embalagem.'); return; }
   const {data:existente}=await sb.from('mel_embalagem').select('id').eq('produto_id',produto_id).eq('tipo',tipo).eq('peso',peso).maybeSingle();
   if(existente){ alert('Essa embalagem já está cadastrada para este produto.'); return; }
-  const {data:nova,error}=await sb.from('mel_embalagem').insert({produto_id,tipo,peso,estoque:0,ativo:true}).select().maybeSingle();
+  const {error}=await sb.from('mel_embalagem').insert({produto_id,tipo,peso,estoque:0,ativo:true});
   if(error){ alert('Erro ao cadastrar embalagem: '+error.message); return; }
   flash('Embalagem cadastrada.');
-  if($('en-prod')){
-    $('emb-peso').value='';
-    await carregarEmb();
-    if(nova&&$('en-emb')) $('en-emb').value=nova.id;
-    calcularEnvaseAutomatico();
-    return;
-  }
+  render();
+}
+async function removerEmbalagem(embId){
+  if(!confirm('Remover esta embalagem do produto?'))return;
+  const {error}=await sb.from('mel_embalagem').delete().eq('id',embId);
+  if(error){ alert('Não foi possível remover (pode haver envases/estoque usando esta embalagem): '+error.message); return; }
+  flash('Embalagem removida.');
   render();
 }
 async function saida(embId){
