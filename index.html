@@ -514,6 +514,9 @@ async function criarAssociadoLogin(){
 /* ===== ADMIN: PRODUTOS ===== */
 async function telaProdutos(){
   const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
+  // floradas do estabelecimento (base para o nome do produto)
+  const {data:floradas}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
+  window.__floradasProd=floradas||[];
   const cards=[];
   for(const p of (prods||[])){
     const e=espById(p.especie_id)||{};
@@ -540,27 +543,75 @@ async function telaProdutos(){
         <tbody>${embRows}</tbody></table>
     </div>`);
   }
-  const optsEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)} — ${esc(e.nome_cientifico)}</option>`).join('');
+  // opções de florada para o NOME do produto
+  const optsFlor=(floradas||[]).map(f=>{
+    const marca=f.status==='habilitada'?'':' (pendente)';
+    return `<option value="${f.id}">${esc(f.nome)}${marca}</option>`;
+  }).join('');
+  const semFlorada=(floradas||[]).length===0;
   $('app').innerHTML=`<h1>Produtos</h1>
-    <div class="banner info">Cadastre o produto e, em cada produto, os tamanhos de embalagem que ele usa. No envase, você apenas seleciona a embalagem já cadastrada aqui.</div>
+    <div class="banner info">O nome do produto vem da <b>florada cadastrada</b>. Escolha a florada, o tipo e já defina a primeira embalagem. No envase você só seleciona o que cadastrou aqui.</div>
     <div class="card"><h3>Novo produto</h3>
-      <div class="row"><div class="field"><label>Nome</label><input id="p-nome" placeholder="ex.: Mel de Jataí"></div>
-        <div class="field"><label>Espécie</label><select id="p-esp">${optsEsp}</select></div></div>
-      <div class="row"><div class="field"><label>Tipo</label><select id="p-tipo"><option value="mel">mel</option><option value="polen">pólen</option><option value="propolis">própolis</option><option value="geoproplis">geoprópolis</option><option value="geleia_real">geleia real</option></select></div>
-        <div class="field"><label>Nº Selo Arte</label><input id="p-selo" placeholder="SA-…"></div></div>
+      ${semFlorada?'<div class="banner warn">Cadastre uma florada na aba <b>Floradas</b> antes de criar produtos por florada. Você ainda pode criar um produto avulso escolhendo “outro nome”.</div>':''}
+      <div class="row">
+        <div class="field"><label>Nome (florada cadastrada)</label>
+          <select id="p-florada" onchange="prodFloradaMudou()">
+            ${optsFlor}
+            <option value="__outro__">Outro nome (digitar)…</option>
+          </select>
+        </div>
+        <div class="field" id="p-nome-wrap" style="${semFlorada?'':'display:none'}">
+          <label>Nome do produto</label><input id="p-nome" placeholder="ex.: Pólen desidratado">
+        </div>
+        <div class="field"><label>Tipo</label>
+          <select id="p-tipo"><option value="mel">mel</option><option value="polen">pólen</option><option value="propolis">própolis</option><option value="geoproplis">geoprópolis</option><option value="geleia_real">geleia real</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Nº Selo Arte</label><input id="p-selo" placeholder="SA-…"></div>
+        <div class="field"><label>Embalagem — tipo</label>
+          <select id="p-emb-tipo"><option value="">— (adicionar depois)</option><option value="pote">pote</option><option value="bisnaga">bisnaga</option><option value="balde">balde</option></select></div>
+        <div class="field"><label>Embalagem — peso / tamanho</label><input id="p-emb-peso" placeholder="ex.: 250g, 500g, 1 kg"></div>
+      </div>
       <button class="btn" onclick="addProduto()">Adicionar produto</button>
     </div>
     <h2 style="margin:18px 0 6px">Produtos e embalagens</h2>
     ${cards.join('')||'<div class="card"><span class="muted">Nenhum produto ainda. Cadastre o primeiro acima.</span></div>'}`;
+  prodFloradaMudou();
+}
+// mostra/oculta o campo de nome livre conforme a escolha da florada
+function prodFloradaMudou(){
+  const sel=$('p-florada'); if(!sel)return;
+  const wrap=$('p-nome-wrap');
+  if(sel.value==='__outro__'){ if(wrap) wrap.style.display=''; }
+  else { if(wrap) wrap.style.display='none'; }
 }
 async function addProduto(){
-  const nome=$('p-nome').value.trim(), especie_id=$('p-esp').value, tipo=$('p-tipo').value, num_selo_arte=$('p-selo').value.trim()||null;
-  if(!nome){ alert('Informe o nome.'); return; }
+  const selFlor=$('p-florada'), escolha=selFlor?selFlor.value:'__outro__';
+  const tipo=$('p-tipo').value, num_selo_arte=$('p-selo').value.trim()||null;
+  let nome='', especie_id=null;
+  if(escolha && escolha!=='__outro__'){
+    const f=(window.__floradasProd||[]).find(x=>x.id===escolha);
+    if(!f){ alert('Selecione uma florada válida.'); return; }
+    nome=f.nome;               // nome do produto = nome da florada
+    especie_id=f.especie_id;   // espécie herdada da florada
+  } else {
+    nome=($('p-nome')?.value||'').trim();
+    if(!nome){ alert('Informe o nome do produto.'); return; }
+    // sem florada: usa a primeira espécie disponível como referência
+    especie_id=(ESPECIES[0]&&ESPECIES[0].id)||null;
+  }
   const {data:novo,error}=await sb.from('mel_produto')
     .insert({estabelecimento_id:ESTAB.id,especie_id,tipo,nome,num_selo_arte})
     .select().maybeSingle();
   if(error){ alert('Erro ao salvar produto: '+error.message); return; }
   if(!novo){ alert('O produto não foi salvo (sem permissão para este estabelecimento). Atualize a página e tente de novo; se persistir, avise a BIOTEC.'); return; }
+  // embalagem opcional informada no mesmo formulário
+  const embTipo=$('p-emb-tipo')?.value, embPeso=($('p-emb-peso')?.value||'').trim();
+  if(embTipo&&embPeso){
+    const {error:embErr}=await sb.from('mel_embalagem').insert({produto_id:novo.id,tipo:embTipo,peso:embPeso,estoque:0,ativo:true});
+    if(embErr){ alert('Produto criado, mas a embalagem não foi salva: '+embErr.message); render(); return; }
+  }
   flash('Produto cadastrado.');
   render();
 }
