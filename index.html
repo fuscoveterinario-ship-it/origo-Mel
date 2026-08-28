@@ -397,7 +397,10 @@ async function telaEstabDetalhe(){
   const {data:apisAssoc}=await sb.from('mel_apiario').select('associado_id').eq('estabelecimento_id',e.id).not('associado_id','is',null);
   const contApi={}; (apisAssoc||[]).forEach(a=>{contApi[a.associado_id]=(contApi[a.associado_id]||0)+1;});
   const linhasCoop=(assoc||[]).map(a=>`<tr>
-      <td><b>${esc(a.nome)}</b></td>
+      <td><b>${esc(a.nome)}</b>${a.documento?('<br><span class="muted">'+esc(a.documento)+'</span>'):''}</td>
+      <td>${a.foto_url?`<img src="${linkAsset(a.foto_url)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--linha)">`:'<span class="muted">sem foto</span>'}
+          <input type="file" id="fa-${a.id}" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadFotoAssociado('${a.id}',this)">
+          <button class="btn sm ghost" onclick="document.getElementById('fa-${a.id}').click()">${a.foto_url?'Trocar':'Foto'}</button></td>
       <td>${comLogin.has(a.id)?'<span class="pill green">tem login</span>':'<span class="pill grey">sem login</span>'}</td>
       <td>${contApi[a.id]||0} apiário(s)</td>
       <td><button class="btn sm" onclick="gerenciarApiariosAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Apiários</button>
@@ -417,6 +420,28 @@ async function telaEstabDetalhe(){
         <div class="field"><label>Município</label><input value="${esc(e.municipio)}/${esc(e.uf)}" disabled></div>
         <div class="field"><label>Inspeção</label><input value="${esc(e.tipo_inspecao)} ${esc(e.num_inspecao)}" disabled></div>
       </div>
+      ${isBiotec()?`<div style="margin-top:12px;border-top:1px solid var(--linha);padding-top:12px">
+        <label style="display:block;margin-bottom:6px">Logo do ${isAssoc?'associação/cooperativa':'produtor'} (opcional — aparece na etiqueta)</label>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="width:90px;height:64px;border:1px solid var(--linha);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">
+            ${e.logo_url?`<img src="${linkAsset(e.logo_url)}" style="max-width:100%;max-height:100%;object-fit:contain">`:'<span class="muted" style="font-size:11px">sem logo</span>'}
+          </div>
+          <input type="file" id="logo-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadLogoEstab(this)">
+          <button class="btn sm" onclick="document.getElementById('logo-input').click()">${e.logo_url?'Trocar logo':'Enviar logo'}</button>
+          ${e.logo_url?`<button class="btn sm ghost" onclick="removerLogoEstab()">Remover</button>`:''}
+        </div>
+      </div>`:''}
+      ${(isBiotec()&&!isAssoc)?`<div style="margin-top:12px;border-top:1px solid var(--linha);padding-top:12px">
+        <label style="display:block;margin-bottom:6px">Foto do produtor (opcional — aparece na etiqueta e no QR do lote)</label>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <div style="width:64px;height:64px;border-radius:50%;border:1px solid var(--linha);background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden">
+            ${e.foto_url?`<img src="${linkAsset(e.foto_url)}" style="width:100%;height:100%;object-fit:cover">`:'<span class="muted" style="font-size:10px">sem foto</span>'}
+          </div>
+          <input type="file" id="foto-estab-input" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="uploadFotoEstab(this)">
+          <button class="btn sm" onclick="document.getElementById('foto-estab-input').click()">${e.foto_url?'Trocar foto':'Enviar foto'}</button>
+          ${e.foto_url?`<button class="btn sm ghost" onclick="removerFotoEstab()">Remover</button>`:''}
+        </div>
+      </div>`:''}
       ${isBiotec()?`<div style="margin-top:8px"><button class="btn sm ghost" onclick="excluirEstabelecimento()">Excluir estabelecimento</button></div>`:''}
     </div>
     ${!isAssoc?`<div class="card"><h3>Apiários</h3>
@@ -433,11 +458,12 @@ async function telaEstabDetalhe(){
       <div class="banner info">Cadastre o cooperado (nome, e-mail e senha). Depois, use o botão <b>Apiários</b> na linha dele para cadastrar os apiários daquele cooperado.</div>
       <div class="row">
         <div class="field"><label>Nome do cooperado</label><input id="na-nome" placeholder="ex.: João Apicultor" value="${esc(window.__naNome||'')}" oninput="window.__naNome=this.value"></div>
+        <div class="field"><label>Documento / CPF</label><input id="na-doc" placeholder="000.000.000-00" value="${esc(window.__naDoc||'')}" oninput="window.__naDoc=this.value"></div>
         <div class="field"><label>E-mail (login)</label><input id="na-email" type="email" placeholder="joao@email.com" value="${esc(window.__naEmail||'')}" oninput="window.__naEmail=this.value"></div>
         <div class="field"><label>Senha provisória</label><input id="na-senha" type="text" placeholder="mínimo 6 caracteres" value="${esc(window.__naSenha||'')}" oninput="window.__naSenha=this.value"></div>
         <div style="flex:0 0 auto;align-self:flex-end;margin-bottom:14px"><button class="btn" onclick="criarAssociadoLogin()">+ Cadastrar cooperado</button></div>
       </div>
-      <table class="tbl" style="margin-top:8px"><thead><tr><th>Nome</th><th>Login</th><th>Apiários</th><th>Ação</th></tr></thead>
+      <table class="tbl" style="margin-top:8px"><thead><tr><th>Nome</th><th>Foto</th><th>Login</th><th>Apiários</th><th>Ação</th></tr></thead>
         <tbody>${linhasCoop||'<tr><td colspan=4 class=muted>Nenhum cooperado ainda.</td></tr>'}</tbody></table>
     </div>`}`;
 }
@@ -494,8 +520,10 @@ async function addApiario(){
 }
 async function criarAssociadoLogin(){
   const nome=$('na-nome').value.trim(), email=$('na-email').value.trim(), senha=$('na-senha').value;
+  const documento=($('na-doc')?$('na-doc').value.trim():'')||null;
   if(!nome||!email||senha.length<6){ alert('Preencha nome, e-mail e senha (mín. 6 caracteres).'); return; }
   const payload={nome,email,senha};
+  if(documento) payload.documento=documento;
   if(isBiotec()) payload.estabelecimento_id=ESTAB.id; // BIOTEC informa a cooperativa selecionada
   const {data:{session}}=await sb.auth.getSession();
   try{
@@ -506,8 +534,14 @@ async function criarAssociadoLogin(){
     });
     const out=await resp.json();
     if(!resp.ok||out.error){ alert('Não foi possível criar: '+(out.error||resp.status)); return; }
-    window.__naNome=''; window.__naEmail=''; window.__naSenha='';
-    flash('Associado criado: '+email+'. Agora use "Apiários" na lista para cadastrar os apiários dele.'); render();
+    // garante que o documento fique salvo (caso a função não persista)
+    if(documento){
+      const alvoId = out.associado_id || out.id || null;
+      if(alvoId){ await sb.from('mel_associado').update({documento}).eq('id',alvoId); }
+      else { await sb.from('mel_associado').update({documento}).eq('estabelecimento_id',ESTAB.id).eq('nome',nome).is('documento',null); }
+    }
+    window.__naNome=''; window.__naEmail=''; window.__naSenha=''; window.__naDoc='';
+    flash('Associado criado: '+email+'. Use o botão "Foto" na lista para adicionar a foto dele.'); render();
   }catch(e){ alert('Erro de conexão: '+e.message); }
 }
 
@@ -626,6 +660,75 @@ async function addProduto(){
 function linkLaudo(caminho){
   return SUPABASE_URL+'/storage/v1/object/public/mel-laudos/'+caminho;
 }
+function linkAsset(caminho){
+  return SUPABASE_URL+'/storage/v1/object/public/assets/'+caminho;
+}
+async function uploadLogoEstab(input){
+  const file=input&&input.files&&input.files[0];
+  if(!file) return;
+  if(!/^image\/(png|jpe?g|webp)$/.test(file.type)){ alert('Envie uma imagem PNG, JPG ou WEBP.'); return; }
+  if(file.size>2*1024*1024){ alert('Imagem muito grande (máx. 2MB).'); return; }
+  const ext=(file.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const caminho='logos/estab-'+ESTAB.id+'-'+Date.now()+'.'+ext;
+  flash('Enviando logo…');
+  const {error:upErr}=await sb.storage.from('assets').upload(caminho,file,{contentType:file.type,upsert:true});
+  if(upErr){ alert('Erro ao enviar a logo: '+upErr.message); return; }
+  const {data:upd,error:updErr}=await sb.from('mel_estabelecimento').update({logo_url:caminho}).eq('id',ESTAB.id).select().maybeSingle();
+  if(updErr){ alert('Logo enviada, mas erro ao vincular: '+updErr.message); return; }
+  if(!upd){ alert('Sem permissão para salvar a logo neste estabelecimento.'); return; }
+  ESTAB.logo_url=caminho;   // atualiza o estado em memória
+  flash('Logo salva.');
+  render();
+}
+async function removerLogoEstab(){
+  if(!confirm('Remover a logo deste estabelecimento?'))return;
+  const {error}=await sb.from('mel_estabelecimento').update({logo_url:null}).eq('id',ESTAB.id);
+  if(error){ alert('Erro ao remover: '+error.message); return; }
+  ESTAB.logo_url=null;
+  flash('Logo removida.');
+  render();
+}
+async function uploadFotoEstab(input){
+  const file=input&&input.files&&input.files[0];
+  if(!file) return;
+  if(!/^image\/(png|jpe?g|webp)$/.test(file.type)){ alert('Envie uma imagem PNG, JPG ou WEBP.'); return; }
+  if(file.size>3*1024*1024){ alert('Imagem muito grande (máx. 3MB).'); return; }
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const caminho='produtores/estab-'+ESTAB.id+'-'+Date.now()+'.'+ext;
+  flash('Enviando foto…');
+  const {error:upErr}=await sb.storage.from('assets').upload(caminho,file,{contentType:file.type,upsert:true});
+  if(upErr){ alert('Erro ao enviar a foto: '+upErr.message); return; }
+  const {data:upd,error:updErr}=await sb.from('mel_estabelecimento').update({foto_url:caminho}).eq('id',ESTAB.id).select().maybeSingle();
+  if(updErr){ alert('Foto enviada, mas erro ao vincular: '+updErr.message); return; }
+  if(!upd){ alert('Sem permissão para salvar a foto neste estabelecimento.'); return; }
+  ESTAB.foto_url=caminho;
+  flash('Foto salva.');
+  render();
+}
+async function removerFotoEstab(){
+  if(!confirm('Remover a foto deste produtor?'))return;
+  const {error}=await sb.from('mel_estabelecimento').update({foto_url:null}).eq('id',ESTAB.id);
+  if(error){ alert('Erro ao remover: '+error.message); return; }
+  ESTAB.foto_url=null;
+  flash('Foto removida.');
+  render();
+}
+async function uploadFotoAssociado(associadoId,input){
+  const file=input&&input.files&&input.files[0];
+  if(!file) return;
+  if(!/^image\/(png|jpe?g|webp)$/.test(file.type)){ alert('Envie uma imagem PNG, JPG ou WEBP.'); return; }
+  if(file.size>3*1024*1024){ alert('Imagem muito grande (máx. 3MB).'); return; }
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const caminho='associados/assoc-'+associadoId+'-'+Date.now()+'.'+ext;
+  flash('Enviando foto…');
+  const {error:upErr}=await sb.storage.from('assets').upload(caminho,file,{contentType:file.type,upsert:true});
+  if(upErr){ alert('Erro ao enviar a foto: '+upErr.message); return; }
+  const {data:upd,error:updErr}=await sb.from('mel_associado').update({foto_url:caminho}).eq('id',associadoId).select().maybeSingle();
+  if(updErr){ alert('Foto enviada, mas erro ao vincular: '+updErr.message); return; }
+  if(!upd){ alert('Sem permissão para salvar a foto deste associado.'); return; }
+  flash('Foto salva.');
+  render();
+}
 async function habilitarFlorada(id){
   const num=prompt('Número do laudo:'); if(num==null)return;
   const emissao=prompt('Data de emissão (AAAA-MM-DD):',new Date().toISOString().slice(0,10)); if(emissao==null)return;
@@ -729,7 +832,7 @@ async function telaLotes(){
   const optApi=(apis||[]).map(a=>`<option value="${a.id}">${esc(a.municipio)}</option>`).join('');
   const optAssoc=(assoc||[]).map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join('');
   window.__lotesApis=apis||[]; // usados para escolher o apiário automaticamente
-  const rows=(lotes||[]).map(l=>{const e=espById(l.especie_id)||{};return `<tr><td><b>${esc(l.codigo)}</b><br><span class="muted">${l.data_colheita}</span></td><td>${esc(e.nome_comum||'')}</td><td>${l.quantidade} ${l.unidade}<br><span class="muted">saldo ${l.saldo}</span></td><td><span class="pill green">${l.status}</span></td></tr>`;}).join('');
+  const rows=(lotes||[]).map(l=>{const e=espById(l.especie_id)||{};return `<tr><td><b>${esc(l.codigo)}</b><br><span class="muted">${l.data_colheita}</span></td><td>${esc(e.nome_comum||'')}</td><td>${l.quantidade} ${l.unidade}<br><span class="muted">saldo ${l.saldo}</span></td><td><span class="pill green">${l.status}</span></td><td><button class="btn sm ghost" onclick="etiquetaLote('${l.id}')">Etiqueta</button></td></tr>`;}).join('');
   $('app').innerHTML=`<h1>Lotes de colheita</h1>
     ${habil.length===0?'<div class="banner warn">Nenhuma florada habilitada. Crie a florada e aguarde a BIOTEC anexar o laudo.</div>':''}
     <div class="card"><h3>Registrar lote</h3>
@@ -746,7 +849,7 @@ async function telaLotes(){
       <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="l-umid" style="width:auto"> Confirmo que atende ao padrão de umidade da espécie</label>
       <div><button class="btn" onclick="addLote()">Registrar lote</button></div>
     </div>
-    <div class="card"><h3>Lotes</h3><table class="tbl"><thead><tr><th>Lote</th><th>Espécie</th><th>Quantidade</th><th>Status</th></tr></thead><tbody>${rows||'<tr><td colspan=4 class=muted>Nenhum lote.</td></tr>'}</tbody></table></div>`;
+    <div class="card"><h3>Lotes</h3><table class="tbl"><thead><tr><th>Lote</th><th>Espécie</th><th>Quantidade</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=5 class=muted>Nenhum lote.</td></tr>'}</tbody></table></div>`;
 }
 function novoCodigoLote(data_colheita){
   const baseData=(data_colheita||new Date().toISOString().slice(0,10)).slice(0,7).replace('-','');
@@ -774,16 +877,174 @@ async function addLote(){
     apiario_id=doEstab?doEstab.id:null;
   }
   if(!apiario_id){ alert('Cadastre um apiário primeiro'+(associado_id?' para este associado.':'.')); return; }
-  const {error}=await sb.from('mel_lote').insert({
+  const {data:novoLote,error}=await sb.from('mel_lote').insert({
     codigo:novoCodigoLote(data_colheita),
     estabelecimento_id:ESTAB.id, apiario_id, florada_id, especie_id, tipo:'mel',
     quantidade, unidade, saldo:quantidade, data_colheita, umidade_confirmada:umid, associado_id
-  });
+  }).select().maybeSingle();
   if(error){ alert('Não foi possível registrar (o banco pode ter bloqueado por florada sem laudo vigente): '+error.message); return; }
-  flash('Lote registrado.'); render();
+  flash('Lote registrado.');
+  if(novoLote&&novoLote.id){ etiquetaLote(novoLote.id); }
+  render();
 }
 
-/* ===== PRODUTOR: ENVASE ===== */
+/* ===== ETIQUETA DE LOTE ===== */
+async function etiquetaLote(loteId){
+  // busca o lote + florada + espécie + apiário + associado
+  const {data:l,error}=await sb.from('mel_lote').select('*').eq('id',loteId).maybeSingle();
+  if(error||!l){ alert('Não foi possível carregar o lote.'); return; }
+  const esp=espById(l.especie_id)||{};
+  let floradaNome='—', apiarioTxt='—', assocNome=null, qtdApiarios=null;
+  const {data:fl}=await sb.from('mel_florada').select('nome').eq('id',l.florada_id).maybeSingle();
+  if(fl) floradaNome=fl.nome;
+  if(l.apiario_id){
+    const {data:ap}=await sb.from('mel_apiario').select('municipio,uf,bioma').eq('id',l.apiario_id).maybeSingle();
+    if(ap) apiarioTxt=(ap.municipio||'')+(ap.uf?('/'+ap.uf):'')+(ap.bioma?(' · '+ap.bioma):'');
+  }
+  const isAssoc=ESTAB.tipo==='associacao';
+  let fotoUrl='';
+  if(isAssoc && l.associado_id){
+    const {data:as}=await sb.from('mel_associado').select('nome,foto_url').eq('id',l.associado_id).maybeSingle();
+    if(as){ assocNome=as.nome; if(as.foto_url) fotoUrl=linkAsset(as.foto_url); }
+    const {count}=await sb.from('mel_apiario').select('id',{count:'exact',head:true}).eq('associado_id',l.associado_id);
+    qtdApiarios=count||0;
+  } else if(!isAssoc && ESTAB.foto_url){
+    fotoUrl=linkAsset(ESTAB.foto_url);
+  }
+  // gera o QR (aponta para a rastreabilidade pública DESTE lote)
+  const link=urlLote(loteId);
+  let qrDataUrl='';
+  try{
+    await carregarQRLib();
+    const tmp=document.createElement('div');
+    new QRCode(tmp,{text:link,width:300,height:300,colorDark:'#3D3320',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    await new Promise(r=>setTimeout(r,120)); // espera renderizar
+    const cv=tmp.querySelector('canvas'), im=tmp.querySelector('img');
+    if(cv) qrDataUrl=cv.toDataURL('image/png');
+    else if(im&&im.src) qrDataUrl=im.src;
+  }catch(e){ /* segue sem QR se falhar */ }
+
+  const dados={
+    codigo:l.codigo, especie:esp.nome_comum||'', cientifico:esp.nome_cientifico||'',
+    florada:floradaNome, quantidade:l.quantidade, unidade:l.unidade, saldo:l.saldo,
+    data_colheita:l.data_colheita||'', data_extracao:l.data_extracao||'',
+    apiario:apiarioTxt, produtor:ESTAB.razao_social||'', municipio:ESTAB.municipio||'', uf:ESTAB.uf||'',
+    inspecao:(ESTAB.tipo_inspecao||'')+' '+(ESTAB.num_inspecao||''),
+    logoProdutor: ESTAB.logo_url ? linkAsset(ESTAB.logo_url) : '',
+    foto: fotoUrl,
+    assocNome, qtdApiarios, isAssoc, qr:qrDataUrl, link
+  };
+  abrirJanelaEtiqueta(dados);
+}
+
+function abrirJanelaEtiqueta(d){
+  const w=window.open('','_blank','width=560,height=760');
+  if(!w){ alert('Permita pop-ups para gerar a etiqueta.'); return; }
+  const linhaAssoc = d.isAssoc
+    ? `<div class="li"><span>Associado</span><b>${escHtml(d.assocNome||'—')}</b></div>
+       <div class="li"><span>Apiários do associado</span><b>${d.qtdApiarios!=null?d.qtdApiarios:'—'}</b></div>`
+    : '';
+  const qrImg = d.qr ? `<img src="${d.qr}" alt="QR">` : '<div class="noqr">QR indisponível</div>';
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+  <title>Etiqueta ${escHtml(d.codigo)}</title>
+  <style>
+    :root{--tinta:#3D3320;--suave:#8A7A55;--linha:#E0CB9E;--mel:#B8860B}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+    body{background:#efe7d3;color:var(--tinta);padding:16px}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:center;margin-bottom:14px}
+    .toolbar select,.toolbar button{padding:8px 12px;font-size:14px;border-radius:8px;border:1px solid var(--linha);background:#fff;cursor:pointer}
+    .toolbar button.primary{background:var(--mel);color:#fff;border-color:var(--mel);font-weight:bold}
+    .palco{display:flex;justify-content:center}
+    /* ===== ETIQUETA ===== */
+    .etq{background:#fff;border:1.5px solid var(--linha);border-radius:12px;padding:14px;overflow:hidden}
+    .etq .top{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--linha);padding-bottom:8px;margin-bottom:8px}
+    .etq .top .logo-prod{max-height:40px;max-width:90px;object-fit:contain}
+    .etq .top .glifo{width:38px;height:38px;border-radius:50%;background:#E8B84B;display:flex;align-items:center;justify-content:center;color:#4A3208;font-weight:bold;font-style:italic;font-size:22px;flex:0 0 auto}
+    .etq .marca{font-weight:bold;color:var(--mel);font-size:15px;text-align:center}
+    .etq .marca small{display:block;color:var(--suave);font-weight:normal;letter-spacing:2px;font-size:8px}
+    .etq .body{display:flex;gap:12px}
+    .etq .info{flex:1;min-width:0}
+    .etq .cod{font-size:20px;font-weight:bold;letter-spacing:.5px;word-break:break-all;margin-bottom:6px}
+    .li{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0;border-bottom:1px dotted #eadfbf}
+    .li span{color:var(--suave)} .li b{text-align:right}
+    .verif{margin-top:10px;border-top:1px dashed var(--linha);padding-top:8px}
+    .verif .vtit{font-size:9px;letter-spacing:1px;color:var(--mel);font-weight:bold;margin-bottom:5px}
+    .verif .vli{display:flex;justify-content:space-between;gap:10px;font-size:11px;padding:2px 0}
+    .verif .vli span{color:var(--suave)} .verif .vli b{text-align:right}
+    .qr{flex:0 0 auto;text-align:center}
+    .qr img{width:120px;height:120px;display:block}
+    .qr .cap{font-size:8px;color:var(--suave);margin-top:2px;max-width:120px;word-break:break-all}
+    .rod{margin-top:8px;border-top:1px solid var(--linha);padding-top:6px;font-size:9px;color:var(--suave);text-align:center}
+    /* formatos */
+    .f-adesivo .etq{width:250px}   .f-adesivo .qr img{width:90px;height:90px}   .f-adesivo .cod{font-size:16px}
+    .f-cartao  .etq{width:360px}
+    .f-a5      .etq{width:520px}    .f-a5 .qr img{width:150px;height:150px}     .f-a5 .cod{font-size:26px}
+    @media print{
+      .toolbar{display:none} body{background:#fff;padding:0}
+      .palco{display:block}
+    }
+  </style></head>
+  <body>
+    <div class="toolbar">
+      <label>Formato:
+        <select id="fmt" onchange="setFmt()">
+          <option value="f-adesivo">Adesivo pequeno (~6cm)</option>
+          <option value="f-cartao" selected>Cartão médio (~9cm)</option>
+          <option value="f-a5">Grande / A5 (tambor)</option>
+        </select>
+      </label>
+      <button class="primary" onclick="baixarJpg()">Baixar JPG</button>
+      <button onclick="window.print()">Imprimir / PDF</button>
+    </div>
+    <div class="palco f-cartao" id="palco">
+      <div class="etq" id="etq">
+        <div class="top">
+          ${d.logoProdutor?`<img class="logo-prod" src="${d.logoProdutor}" alt="logo produtor" crossorigin="anonymous">`:'<div style="width:40px"></div>'}
+          <div class="marca">Órigo Mel<small>RASTREABILIDADE</small></div>
+          <div class="glifo">ó</div>
+        </div>
+        <div class="body">
+          <div class="info">
+            ${d.foto?`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><img src="${d.foto}" alt="foto" crossorigin="anonymous" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid var(--linha)"><div class="cod" style="margin:0">${escHtml(d.codigo)}</div></div>`:`<div class="cod">${escHtml(d.codigo)}</div>`}
+            <div class="li"><span>Produtor</span><b>${escHtml(d.produtor)}</b></div>
+            ${linhaAssoc}
+            <div class="li"><span>Florada</span><b>${escHtml(d.florada)}</b></div>
+            <div class="li"><span>Espécie</span><b>${escHtml(d.especie)}</b></div>
+            <div class="li"><span>Quantidade</span><b>${escHtml(String(d.quantidade))} ${escHtml(d.unidade)}</b></div>
+            <div class="li"><span>Colheita</span><b>${escHtml(d.data_colheita)}</b></div>
+            <div class="li"><span>Apiário</span><b>${escHtml(d.apiario)}</b></div>
+            <div class="li"><span>Inspeção</span><b>${escHtml(d.inspecao)}</b></div>
+          </div>
+          <div class="qr">${qrImg}<div class="cap">rastreie</div></div>
+        </div>
+        <div class="verif">
+          <div class="vtit">ITENS VERIFICADOS</div>
+          <div class="vli"><span>Umidade</span><b>Menor que 20%</b></div>
+          <div class="vli"><span>Cor e odor</span><b>Característicos</b></div>
+          <div class="vli"><span>Limpeza na estrutura de extração</span><b>Realizada</b></div>
+        </div>
+        <div class="rod">Emitido por BIOTEC · Órigo Mel — lote de colheita</div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>
+    <script>
+      function setFmt(){var p=document.getElementById('palco');p.className='palco '+document.getElementById('fmt').value;}
+      async function baixarJpg(){
+        var etq=document.getElementById('etq');
+        try{
+          var canvas=await html2canvas(etq,{scale:3,backgroundColor:'#ffffff',useCORS:true});
+          var a=document.createElement('a');
+          a.href=canvas.toDataURL('image/jpeg',0.95);
+          a.download='etiqueta-${escHtml(d.codigo)}.jpg'; a.click();
+        }catch(e){ alert('Não foi possível gerar o JPG. Use Imprimir / PDF.'); }
+      }
+    <\/script>
+  </body></html>`);
+  w.document.close();
+}
+// escape para uso dentro da janela de etiqueta
+function escHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
 async function telaEnvase(){
   const {data:prods}=await sb.from('mel_produto').select('*').eq('estabelecimento_id',ESTAB.id);
   const {data:lotes}=await sb.from('mel_lote').select('*').eq('estabelecimento_id',ESTAB.id).gt('saldo',0);
@@ -899,6 +1160,11 @@ function urlVerifica(){
   // deriva a partir da URL atual: troca o arquivo final por verifica.html
   const base=location.href.split('?')[0].split('#')[0].replace(/[^/]*$/,'');
   return base+'verifica.html?e='+ESTAB.id;
+}
+function urlLote(loteId){
+  // página pública de rastreabilidade do lote (lote.html?l=<id>)
+  const base=location.href.split('?')[0].split('#')[0].replace(/[^/]*$/,'');
+  return base+'lote.html?l='+loteId;
 }
 function carregarScript(src){
   return new Promise((res,rej)=>{
