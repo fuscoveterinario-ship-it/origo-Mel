@@ -293,6 +293,7 @@ async function iniciarSessao(){
   $('tela-login').classList.add('hidden');
   $('tela-app').classList.remove('hidden');
   $('user-chip').textContent=(ME.nome||'')+' · '+rotuloRole(ME.role);
+  setupPdfInput();   // garante o input de arquivo global (upload de laudo)
   TAB=0; render();
 }
 function rotuloRole(r){ return r==='estabelecimento'?(isAssociado()?'Associado':'Produtor'):(r==='admin_biotec'?'Admin BIOTEC':'Auditor BIOTEC'); }
@@ -551,24 +552,49 @@ async function habilitarFlorada(id){
   const emissao=prompt('Data de emissão (AAAA-MM-DD):',new Date().toISOString().slice(0,10)); if(emissao==null)return;
   const {error}=await sb.from('mel_florada').update({status:'habilitada',laudo_numero:num,laudo_emissao:emissao,habilitada_por:ME.id,habilitada_em:new Date().toISOString()}).eq('id',id);
   if(error){ alert('Erro: '+error.message); return; }
-  flash('Florada habilitada. Agora anexe o PDF do laudo.');
-  anexarPdfFlorada(id);
+  // NÃO abrimos o seletor de arquivo aqui: um click() após await é bloqueado pelo
+  // navegador (perde o "user activation"). Apenas re-renderiza; aí aparece o botão
+  // "Anexar PDF", cujo clique é um gesto real do usuário e abre o seletor normalmente.
+  flash('Florada habilitada. Agora clique em "Anexar PDF" na linha da florada.');
+  render();
 }
-async function anexarPdfFlorada(id){
-  const input=$('pdf-input'); if(!input)return;
-  input.value='';
-  input.onchange=async()=>{
-    const file=input.files[0]; if(!file)return;
-    if(file.type!=='application/pdf'){ alert('Selecione um arquivo PDF.'); return; }
-    const caminho='florada-'+id+'-'+Date.now()+'.pdf';
-    flash('Enviando PDF…');
-    const {error:upErr}=await sb.storage.from('mel-laudos').upload(caminho,file,{contentType:'application/pdf',upsert:true});
-    if(upErr){ alert('Erro ao enviar PDF: '+upErr.message); return; }
-    const {error:updErr}=await sb.from('mel_florada').update({laudo_pdf:caminho}).eq('id',id);
-    if(updErr){ alert('PDF enviado, mas erro ao vincular: '+updErr.message); return; }
-    flash('Laudo em PDF anexado.'); render();
-  };
+// Abre o seletor de arquivo. Chamado DIRETO do onclick do botão (gesto do usuário),
+// sem nenhum await antes — por isso input.click() é permitido pelo navegador.
+function anexarPdfFlorada(id){
+  const input=setupPdfInput();
+  if(!input){ alert('Recarregue a página e tente novamente.'); return; }
+  window.__pdfFloradaId=id;   // guarda qual florada receberá o PDF
+  input.value='';             // permite reescolher o mesmo arquivo
   input.click();
+}
+// Handler ÚNICO e persistente do input (registrado uma vez, ver setupPdfInput()).
+async function __onPdfEscolhido(ev){
+  const input=ev.target;
+  const id=window.__pdfFloradaId;
+  const file=input.files&&input.files[0];
+  if(!file||!id)return;
+  if(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name)){ alert('Selecione um arquivo PDF.'); return; }
+  const caminho='florada-'+id+'-'+Date.now()+'.pdf';
+  flash('Enviando PDF…');
+  const {error:upErr}=await sb.storage.from('mel-laudos').upload(caminho,file,{contentType:'application/pdf',upsert:true});
+  if(upErr){ alert('Erro ao enviar PDF: '+upErr.message); return; }
+  const {error:updErr}=await sb.from('mel_florada').update({laudo_pdf:caminho}).eq('id',id);
+  if(updErr){ alert('PDF enviado, mas erro ao vincular: '+updErr.message); return; }
+  window.__pdfFloradaId=null;
+  flash('Laudo em PDF anexado.'); render();
+}
+// Garante que exista UM input de arquivo global e que o handler seja ligado só uma vez,
+// independentemente de quantas vezes a tela for re-renderizada.
+function setupPdfInput(){
+  let input=document.getElementById('pdf-input-global');
+  if(!input){
+    input=document.createElement('input');
+    input.type='file'; input.id='pdf-input-global'; input.accept='application/pdf';
+    input.style.display='none';
+    document.body.appendChild(input);
+    input.addEventListener('change',__onPdfEscolhido);
+  }
+  return input;
 }
 
 /* ===== ADMIN: AUDITORIA ===== */
@@ -869,7 +895,6 @@ async function telaFloradasBiotec(){
   $('app').innerHTML=`<h1>Floradas & Laudos</h1>
     <div class="banner info">Só a BIOTEC habilita, anexando laudo válido por 12 meses. Ao habilitar, anexe o PDF do laudo — o produtor consegue baixar.</div>
     ${pend?`<div class="banner warn">${pend} florada(s) aguardando habilitação da BIOTEC.</div>`:''}
-    <input type="file" id="pdf-input" accept="application/pdf" style="display:none">
     <div class="card"><h3>Floradas de todos os estabelecimentos</h3><table class="tbl"><thead><tr><th>Produtor / Solicitante</th><th>Florada</th><th>Laudo</th><th>Situação</th><th>Laudo PDF</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=6 class=muted>Nenhuma.</td></tr>'}</tbody></table></div>`;
 }
 async function addFlorada(){
