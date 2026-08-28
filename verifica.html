@@ -133,7 +133,7 @@ async function carregar(){
       return `<div class="item">
         <div class="t">${p.nome}</div>
         <div class="d">${sub}</div>
-        <div class="s">${p.nome_cientifico} · umidade padrão ${umidTxt(p.umidade_min,p.umidade_max)}</div>
+        <div class="s">${p.nome_cientifico}${p.num_selo_arte ? (' · Selo Arte '+p.num_selo_arte) : ''}</div>
       </div>`;
     }).join('') || '<div class="item"><div class="d">Nenhum produto publicado ainda.</div></div>';
 
