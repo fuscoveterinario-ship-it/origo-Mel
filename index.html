@@ -310,8 +310,8 @@ function abas(){
   if(isAssociado()) return ['Início','Minhas Floradas','Meus Lotes']; // associado: sem envase/estoque
   // gestor: se for associação, ganha aba Associados
   return ESTAB && ESTAB.tipo==='associacao'
-    ? ['Início','Floradas','Lotes','Envase','Estoque','Associados']
-    : ['Início','Floradas','Lotes','Envase','Estoque'];
+    ? ['Início','Floradas','Produtos','Lotes','Envase','Estoque','Associados']
+    : ['Início','Floradas','Produtos','Lotes','Envase','Estoque'];
 }
 function render(){
   const tabs=abas();
@@ -321,8 +321,8 @@ function render(){
   $('app').innerHTML='<div class="estado"><div class="spin"></div>Carregando…</div>';
   if(isBiotec()){ [telaEstab,telaProdutos,telaFloradas,telaAuditoria][TAB](); }
   else if(isAssociado()){ [telaInicio,telaFloradas,telaLotes][TAB](); }
-  else if(ESTAB.tipo==='associacao'){ [telaInicio,telaFloradas,telaLotes,telaEnvase,telaEstoque,telaAssociados][TAB](); }
-  else { [telaInicio,telaFloradas,telaLotes,telaEnvase,telaEstoque][TAB](); }
+  else if(ESTAB.tipo==='associacao'){ [telaInicio,telaFloradas,telaProdutos,telaLotes,telaEnvase,telaEstoque,telaAssociados][TAB](); }
+  else { [telaInicio,telaFloradas,telaProdutos,telaLotes,telaEnvase,telaEstoque][TAB](); }
 }
 function irAba(i){
   // BIOTEC: clicar na aba Estabelecimento volta para a LISTA (página 1)
