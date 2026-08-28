@@ -761,8 +761,10 @@ async function __onPdfEscolhido(ev){
   const file=input.files&&input.files[0];
   if(!file||!id)return;
   if(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name)){ alert('Selecione um arquivo PDF.'); return; }
+  const MB=file.size/1024/1024;
+  if(MB>15){ alert('O PDF tem '+MB.toFixed(1)+' MB, muito pesado para enviar. Reduza para até ~15 MB (ex.: escaneie em qualidade menor ou comprima o PDF) e tente de novo.'); return; }
   const caminho='florada-'+id+'-'+Date.now()+'.pdf';
-  flash('Enviando PDF…');
+  flash('Enviando PDF ('+MB.toFixed(1)+' MB)…');
   try{
     const {error:upErr}=await sb.storage.from('mel-laudos').upload(caminho,file,{contentType:'application/pdf',upsert:true});
     if(upErr){ alert('Erro ao enviar PDF: '+upErr.message); return; }
@@ -771,7 +773,7 @@ async function __onPdfEscolhido(ev){
     window.__pdfFloradaId=null;
     flash('Laudo em PDF anexado.'); render();
   }catch(e){
-    alert('Falha de conexão ao enviar o PDF. Recarregue a página e tente de novo (ou use uma janela anônima).\n\nDetalhe: '+(e.message||e));
+    alert('Falha de conexão ao enviar o PDF ('+MB.toFixed(1)+' MB).\n\nTente: (1) recarregar a página; (2) usar uma janela anônima; (3) se o PDF for pesado, comprimir para menos MB.\n\nDetalhe: '+(e.message||e));
   }
 }
 // Garante que exista UM input de arquivo global e que o handler seja ligado só uma vez,
