@@ -556,8 +556,13 @@ async function telaProdutos(){
 async function addProduto(){
   const nome=$('p-nome').value.trim(), especie_id=$('p-esp').value, tipo=$('p-tipo').value, num_selo_arte=$('p-selo').value.trim()||null;
   if(!nome){ alert('Informe o nome.'); return; }
-  const {error}=await sb.from('mel_produto').insert({estabelecimento_id:ESTAB.id,especie_id,tipo,nome,num_selo_arte});
-  if(error){ alert('Erro: '+error.message); return; } render();
+  const {data:novo,error}=await sb.from('mel_produto')
+    .insert({estabelecimento_id:ESTAB.id,especie_id,tipo,nome,num_selo_arte})
+    .select().maybeSingle();
+  if(error){ alert('Erro ao salvar produto: '+error.message); return; }
+  if(!novo){ alert('O produto não foi salvo (sem permissão para este estabelecimento). Atualize a página e tente de novo; se persistir, avise a BIOTEC.'); return; }
+  flash('Produto cadastrado.');
+  render();
 }
 
 /* ===== ADMIN: FLORADAS & LAUDOS ===== */
@@ -843,8 +848,9 @@ async function addEmbalagem(produtoId){
   if(!tipo||!peso){ alert('Selecione o tipo e informe o peso/tamanho da embalagem.'); return; }
   const {data:existente}=await sb.from('mel_embalagem').select('id').eq('produto_id',produto_id).eq('tipo',tipo).eq('peso',peso).maybeSingle();
   if(existente){ alert('Essa embalagem já está cadastrada para este produto.'); return; }
-  const {error}=await sb.from('mel_embalagem').insert({produto_id,tipo,peso,estoque:0,ativo:true});
+  const {data:nova,error}=await sb.from('mel_embalagem').insert({produto_id,tipo,peso,estoque:0,ativo:true}).select().maybeSingle();
   if(error){ alert('Erro ao cadastrar embalagem: '+error.message); return; }
+  if(!nova){ alert('A embalagem não foi salva (sem permissão). Atualize a página e tente novamente.'); return; }
   flash('Embalagem cadastrada.');
   render();
 }
