@@ -832,10 +832,18 @@ async function telaFloradasProd(){}
 
 /* ===== PRODUTOR: LOTES ===== */
 async function telaLotes(){
-  const {data:apis}=await sb.from('mel_apiario').select('*').eq('estabelecimento_id',ESTAB.id);
-  const {data:fl}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id);
+  let qApi=sb.from('mel_apiario').select('*').eq('estabelecimento_id',ESTAB.id);
+  let qFl=sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id);
+  let qLotes=sb.from('mel_lote').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em',{ascending:false});
+  if(isAssociado()){ // associado vê/registra só o SEU mel
+    qApi=qApi.eq('associado_id',ME.associado_id);
+    qFl=qFl.eq('associado_id',ME.associado_id);
+    qLotes=qLotes.eq('associado_id',ME.associado_id);
+  }
+  const {data:apis}=await qApi;
+  const {data:fl}=await qFl;
   const {data:assoc}=await sb.from('mel_associado').select('*').eq('estabelecimento_id',ESTAB.id).eq('ativo',true);
-  const {data:lotes}=await sb.from('mel_lote').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em',{ascending:false});
+  const {data:lotes}=await qLotes;
   const habil=(fl||[]).filter(laudoVigente);
   const isAssoc=ESTAB.tipo==='associacao';
   const optEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)}</option>`).join('');
@@ -1416,8 +1424,14 @@ async function saida(embId){
 /* substitui telaFloradas do produtor por versão com criação */
 async function telaFloradas(){
   if(isBiotec()){ return telaFloradasBiotec(); }
-  const {data:fl}=await sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id).order('criado_em');
-  const {data:apis}=await sb.from('mel_apiario').select('*').eq('estabelecimento_id',ESTAB.id);
+  let qFl=sb.from('mel_florada').select('*').eq('estabelecimento_id',ESTAB.id);
+  let qApi=sb.from('mel_apiario').select('*').eq('estabelecimento_id',ESTAB.id);
+  if(isAssociado()){ // associado vê só o SEU mel
+    qFl=qFl.eq('associado_id',ME.associado_id);
+    qApi=qApi.eq('associado_id',ME.associado_id);
+  }
+  const {data:fl}=await qFl.order('criado_em');
+  const {data:apis}=await qApi;
   const rows=(fl||[]).map(f=>{const e=espById(f.especie_id)||{};const vig=laudoVigente(f);
     const pill=f.status==='pendente'?'grey':(vig?'green':'red');const txt=f.status==='pendente'?'Pendente (aguarda BIOTEC)':(vig?'Habilitada':'Laudo vencido');
     const pdf=f.laudo_pdf?`<a class="btn sm ghost" href="${linkLaudo(f.laudo_pdf)}" target="_blank">Baixar PDF</a>`:'<span class="muted">—</span>';
