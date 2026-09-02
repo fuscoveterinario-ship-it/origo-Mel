@@ -845,7 +845,7 @@ async function telaLotes(){
   const {data:assoc}=await sb.from('mel_associado').select('*').eq('estabelecimento_id',ESTAB.id).eq('ativo',true);
   const {data:lotes}=await qLotes;
   const habil=(fl||[]).filter(laudoVigente);
-  const isAssoc=ESTAB.tipo==='associacao';
+  const isAssoc=ESTAB.tipo==='associacao' && isGestor(); // só o gestor escolhe o dono; associado é sempre ele mesmo
   const optEsp=ESPECIES.map(e=>`<option value="${e.id}">${esc(e.nome_comum)}</option>`).join('');
   const optFlor=habil.map(f=>`<option value="${f.id}" data-esp="${f.especie_id}">${esc(f.nome)}</option>`).join('');
   const optApi=(apis||[]).map(a=>`<option value="${a.id}">${esc(a.municipio)}</option>`).join('');
