@@ -404,6 +404,7 @@ async function telaEstabDetalhe(){
       <td>${comLogin.has(a.id)?'<span class="pill green">tem login</span>':'<span class="pill grey">sem login</span>'}</td>
       <td>${contApi[a.id]||0} apiário(s)</td>
       <td><button class="btn sm" onclick="gerenciarApiariosAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Apiários</button>
+          <button class="btn sm ghost" onclick="editarAssociado('${a.id}')">Editar</button>
           <button class="btn sm ghost" onclick="desativarAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Desativar</button></td>
     </tr>`).join('');
   const listaAssoc=(assoc||[]).map(a=>`<span class="chip">${esc(a.nome)}${comLogin.has(a.id)?' ✓ login':' <span class="muted">sem login</span>'}</span>`).join('');
@@ -1643,6 +1644,7 @@ async function telaAssociados(){
       <td>${nApi} apiário(s)</td>
       <td>
         <button class="btn sm" onclick="gerenciarApiariosAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Apiários</button>
+        <button class="btn sm ghost" onclick="editarAssociado('${a.id}')">Editar</button>
         <button class="btn sm ghost" onclick="desativarAssociado('${a.id}','${esc(a.nome).replace(/'/g,"\\'")}')">Desativar</button>
       </td></tr>`;
   }).join('');
@@ -1739,6 +1741,57 @@ function voltarDeApiarios(){
   // BIOTEC: volta ao detalhe do estabelecimento (card Cooperados). Gestor: volta à aba Associados.
   if(isBiotec()){ window.__estabView='detalhe'; TAB=0; render(); }
   else { TAB=5; render(); }
+}
+async function editarAssociado(id){
+  // Carrega dados atuais: nome (mel_associado). O e-mail vive no auth.users (não acessível pelo front).
+  const {data:a}=await sb.from('mel_associado').select('id,nome').eq('id',id).maybeSingle();
+  if(!a){ alert('Associado não encontrado.'); return; }
+  const {data:u}=await sb.from('mel_usuario').select('auth_uid').eq('associado_id',id).maybeSingle();
+  const temLogin=!!(u&&u.auth_uid);
+
+  const novoNome=prompt('Nome do associado:', a.nome);
+  if(novoNome===null) return; // cancelou
+  const nomeLimpo=novoNome.trim();
+  if(!nomeLimpo){ alert('O nome não pode ficar vazio.'); return; }
+
+  let novoEmail='';
+  if(temLogin){
+    const r=prompt('Novo e-mail (login) do associado.\nDeixe em branco para manter o atual:', '');
+    if(r===null) return;
+    novoEmail=r.trim().toLowerCase();
+  } else {
+    alert('Este associado ainda não tem login, então só o nome será alterado. O e-mail é definido ao criar o login.');
+  }
+
+  const mudouNome = nomeLimpo!==a.nome;
+  const mudouEmail = temLogin && !!novoEmail;
+  if(!mudouNome && !mudouEmail){ flash('Nada foi alterado.'); return; }
+
+  // Nome sempre pode ser atualizado direto (RLS do estabelecimento permite gestor/BIOTEC)
+  if(mudouNome){
+    const {error:e1}=await sb.from('mel_associado').update({nome:nomeLimpo}).eq('id',id);
+    if(e1){ alert('Erro ao atualizar o nome: '+e1.message); return; }
+  }
+  // E-mail de login exige Edge Function (mexe no auth.user)
+  if(mudouEmail){
+    const {data:{session}}=await sb.auth.getSession();
+    try{
+      const resp=await fetch(SUPABASE_URL+'/functions/v1/editar-associado',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({associado_id:id, nome:nomeLimpo, email:novoEmail})
+      });
+      const out=await resp.json().catch(()=>({}));
+      if(!resp.ok||out.error){
+        alert('O nome'+(mudouNome?' foi atualizado':' não mudou')+', mas o e-mail de login NÃO pôde ser alterado: '+(out.error||('função indisponível ('+resp.status+')'))+'\n\nPara alterar e-mail de login é preciso a Edge Function "editar-associado" publicada.');
+        render(); return;
+      }
+    }catch(e){
+      alert('O nome'+(mudouNome?' foi atualizado':' não mudou')+', mas houve erro ao alterar o e-mail: '+e.message);
+      render(); return;
+    }
+  }
+  flash('Associado atualizado.'); render();
 }
 async function desativarAssociado(id, nome){
   if(!confirm('Desativar o associado "'+nome+'"?\n\nEle deixará de aparecer na lista e o login será bloqueado. O histórico de mel dele é preservado.')) return;
