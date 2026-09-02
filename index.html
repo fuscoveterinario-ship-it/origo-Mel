@@ -1084,6 +1084,7 @@ function abrirJanelaEtiqueta(d){
             <div class="li"><span>Apiário</span><b>${escHtml(d.apiario)}</b></div>
             <div class="li"><span>Produzido (envasado)</span><b>${d.potesProduzidos} potes</b></div>
             <div class="li"><span>Comercializado</span><b>${d.potesComercializados} potes</b></div>
+            <div class="li"><span>Saldo em estoque</span><b>${Math.max(0, d.potesProduzidos - d.potesComercializados)} potes</b></div>
             <div class="li"><span>Inspeção</span><b>${escHtml(d.inspecao)}</b></div>
           </div>
           <div class="qr">${qrImg}<div class="cap">rastreie</div></div>
