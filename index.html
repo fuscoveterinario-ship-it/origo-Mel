@@ -1080,6 +1080,7 @@ async function telaEnvase(){
   window.__floradasEnv=floradas||[];
   window.__assocEnv=assoc||[];
   window.__lotesTelaEnv=[];
+  window.__prodEnvMap={}; (prods||[]).forEach(p=>{ window.__prodEnvMap[p.id]=p; });
   carregarEmb();
 }
 async function carregarEmb(){
@@ -1138,6 +1139,24 @@ async function registrarEnvase(){
   if(num_potes<=0||qtd<=0){ alert('Informe potes e kg.'); return; }
   const lotesEsp=(window.__lotesTelaEnv||[]);
   if(!lotesEsp.length){ alert('Selecione uma florada com saldo para abastecer este envase.'); return; }
+  // BLOQUEIO: só envasa lotes do MESMO mel (mesma espécie e mesma florada), e coerente com o produto
+  const usados=lotesEsp.filter(l=>{ const inp=$('en-use-'+l.id); return inp && (parseFloat(inp.value)||0)>0; });
+  if(!usados.length){ alert('Informe a quantidade a usar em pelo menos um lote.'); return; }
+  const especies=[...new Set(usados.map(l=>l.especie_id))];
+  const floradas=[...new Set(usados.map(l=>l.florada_id))];
+  if(especies.length>1){
+    alert('Envase bloqueado: os lotes selecionados são de ESPÉCIES diferentes. Um mesmo envase só pode conter mel da mesma espécie.');
+    return;
+  }
+  if(floradas.length>1){
+    alert('Envase bloqueado: os lotes selecionados são de FLORADAS diferentes. Um mesmo envase só pode conter mel da mesma florada.');
+    return;
+  }
+  const prodRef=(window.__prodEnvMap||{})[produto_id];
+  if(prodRef && prodRef.especie_id && especies[0] && prodRef.especie_id!==especies[0]){
+    alert('Envase bloqueado: a espécie do mel não corresponde à espécie do produto selecionado. Escolha o produto certo para este mel.');
+    return;
+  }
   const totalUsado=lotesEsp.reduce((s,l)=>{ const inp=$('en-use-'+l.id); return s+(inp?parseFloat(inp.value)||0:0); },0);
   if(Math.abs(totalUsado-qtd)>0.01){
     alert('A soma usada dos lotes precisa bater com os kg envasados. Kg envasados: '+qtd+' kg. Usado nos lotes: '+Number(totalUsado.toFixed(3))+' kg.');
