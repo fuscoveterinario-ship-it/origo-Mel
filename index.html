@@ -938,6 +938,47 @@ async function etiquetaLote(loteId){
   } else if(!isAssoc && ESTAB.foto_url){
     fotoUrl=linkAsset(ESTAB.foto_url);
   }
+  // PRODUZIDO x COMERCIALIZADO deste lote (a partir do envase e das saídas)
+  let potesProduzidos=0, potesComercializados=0;
+  const {data:vinc}=await sb.from('mel_producao_lote').select('producao_id,qtd_consumida').eq('lote_id',loteId);
+  const producaoIds=[...new Set((vinc||[]).map(v=>v.producao_id))];
+  if(producaoIds.length){
+    const {data:prods}=await sb.from('mel_producao').select('id,embalagem_id,num_potes').in('id',producaoIds);
+    const prodMap={}; (prods||[]).forEach(p=>prodMap[p.id]=p);
+    // total de kg consumido por produção (p/ ratear os potes daquele envase entre os lotes)
+    const {data:todosVinc}=await sb.from('mel_producao_lote').select('producao_id,lote_id,qtd_consumida').in('producao_id',producaoIds);
+    const kgPorProducao={}; (todosVinc||[]).forEach(v=>{ kgPorProducao[v.producao_id]=(kgPorProducao[v.producao_id]||0)+Number(v.qtd_consumida||0); });
+    // saídas por embalagem e potes brutos por embalagem (p/ ratear o quanto saiu deste lote)
+    const embIds=[...new Set((prods||[]).map(p=>p.embalagem_id))];
+    const brutoEmb={}, potesLotePorEmb={};
+    (vinc||[]).forEach(v=>{
+      const p=prodMap[v.producao_id]; if(!p)return;
+      const somaKg=kgPorProducao[v.producao_id]||0;
+      const frac= somaKg>0 ? Number(v.qtd_consumida||0)/somaKg : 0;
+      const potes=(p.num_potes||0)*frac;
+      potesProduzidos+=potes;
+      potesLotePorEmb[p.embalagem_id]=(potesLotePorEmb[p.embalagem_id]||0)+potes;
+    });
+    // bruto total por embalagem (todos os lotes) e saídas por embalagem
+    (todosVinc||[]).forEach(v=>{
+      const p=prodMap[v.producao_id]; if(!p)return;
+      const somaKg=kgPorProducao[v.producao_id]||0;
+      const frac= somaKg>0 ? Number(v.qtd_consumida||0)/somaKg : 0;
+      brutoEmb[p.embalagem_id]=(brutoEmb[p.embalagem_id]||0)+(p.num_potes||0)*frac;
+    });
+    let saidaEmb={};
+    if(embIds.length){
+      const {data:saidas}=await sb.from('mel_saida_produto').select('embalagem_id,quantidade').in('embalagem_id',embIds);
+      (saidas||[]).forEach(s=>{ saidaEmb[s.embalagem_id]=(saidaEmb[s.embalagem_id]||0)+Number(s.quantidade||0); });
+    }
+    // comercializado deste lote = saída da embalagem rateada pela fatia do lote naquela embalagem
+    Object.keys(potesLotePorEmb).forEach(embId=>{
+      const bruto=brutoEmb[embId]||0, saida=saidaEmb[embId]||0;
+      if(bruto>0) potesComercializados += saida*(potesLotePorEmb[embId]/bruto);
+    });
+  }
+  potesProduzidos=Math.round(potesProduzidos);
+  potesComercializados=Math.round(potesComercializados);
   // gera o QR (aponta para a rastreabilidade pública DESTE lote)
   const link=urlLote(loteId);
   let qrDataUrl='';
@@ -959,7 +1000,8 @@ async function etiquetaLote(loteId){
     inspecao:(ESTAB.tipo_inspecao||'')+' '+(ESTAB.num_inspecao||''),
     logoProdutor: ESTAB.logo_url ? linkAsset(ESTAB.logo_url) : '',
     foto: fotoUrl,
-    assocNome, qtdApiarios, isAssoc, qr:qrDataUrl, link
+    assocNome, qtdApiarios, isAssoc, qr:qrDataUrl, link,
+    potesProduzidos, potesComercializados
   };
   abrirJanelaEtiqueta(dados);
 }
@@ -1040,6 +1082,8 @@ function abrirJanelaEtiqueta(d){
             <div class="li"><span>Quantidade</span><b>${escHtml(String(d.quantidade))} ${escHtml(d.unidade)}</b></div>
             <div class="li"><span>Colheita</span><b>${escHtml(d.data_colheita)}</b></div>
             <div class="li"><span>Apiário</span><b>${escHtml(d.apiario)}</b></div>
+            <div class="li"><span>Produzido (envasado)</span><b>${d.potesProduzidos} potes</b></div>
+            <div class="li"><span>Comercializado</span><b>${d.potesComercializados} potes</b></div>
             <div class="li"><span>Inspeção</span><b>${escHtml(d.inspecao)}</b></div>
           </div>
           <div class="qr">${qrImg}<div class="cap">rastreie</div></div>
