@@ -851,7 +851,15 @@ async function telaLotes(){
   const optApi=(apis||[]).map(a=>`<option value="${a.id}">${esc(a.municipio)}</option>`).join('');
   const optAssoc=(assoc||[]).map(a=>`<option value="${a.id}">${esc(a.nome)}</option>`).join('');
   window.__lotesApis=apis||[]; // usados para escolher o apiário automaticamente
-  const rows=(lotes||[]).map(l=>{const e=espById(l.especie_id)||{};return `<tr><td><b>${esc(l.codigo)}</b><br><span class="muted">${l.data_colheita}</span></td><td>${esc(e.nome_comum||'')}</td><td>${l.quantidade} ${l.unidade}<br><span class="muted">saldo ${l.saldo}</span></td><td><span class="pill green">${l.status}</span></td><td><button class="btn sm ghost" onclick="etiquetaLote('${l.id}')">Etiqueta</button></td></tr>`;}).join('');
+  // Mostra a coluna "Apicultor" quando quem vê pode ter lotes de vários donos (gestor de coop ou BIOTEC)
+  const mostrarDono = (ESTAB.tipo==='associacao' && isGestor()) || isBiotec();
+  const assocNome={}; (assoc||[]).forEach(a=>{ assocNome[a.id]=a.nome; });
+  const rows=(lotes||[]).map(l=>{const e=espById(l.especie_id)||{};
+    const dono = l.associado_id ? (assocNome[l.associado_id]||'—') : '(estabelecimento)';
+    const colDono = mostrarDono ? `<td>${esc(dono)}</td>` : '';
+    return `<tr><td><b>${esc(l.codigo)}</b><br><span class="muted">${l.data_colheita}</span></td>${colDono}<td>${esc(e.nome_comum||'')}</td><td>${l.quantidade} ${l.unidade}<br><span class="muted">saldo ${l.saldo}</span></td><td><span class="pill green">${l.status}</span></td><td><button class="btn sm ghost" onclick="etiquetaLote('${l.id}')">Etiqueta</button></td></tr>`;}).join('');
+  const thDono = mostrarDono ? '<th>Apicultor</th>' : '';
+  const colspanLotes = mostrarDono ? 6 : 5;
   $('app').innerHTML=`<h1>Lotes de colheita</h1>
     ${habil.length===0?'<div class="banner warn">Nenhuma florada habilitada. Crie a florada e aguarde a BIOTEC anexar o laudo.</div>':''}
     <div class="card"><h3>Registrar lote</h3>
@@ -868,7 +876,7 @@ async function telaLotes(){
       <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="l-umid" style="width:auto"> Confirmo que atende ao padrão de umidade da espécie</label>
       <div><button class="btn" onclick="addLote()">Registrar lote</button></div>
     </div>
-    <div class="card"><h3>Lotes</h3><table class="tbl"><thead><tr><th>Lote</th><th>Espécie</th><th>Quantidade</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rows||'<tr><td colspan=5 class=muted>Nenhum lote.</td></tr>'}</tbody></table></div>`;
+    <div class="card"><h3>Lotes</h3><table class="tbl"><thead><tr><th>Lote</th>${thDono}<th>Espécie</th><th>Quantidade</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rows||`<tr><td colspan=${colspanLotes} class=muted>Nenhum lote.</td></tr>`}</tbody></table></div>`;
 }
 function novoCodigoLote(data_colheita){
   const baseData=(data_colheita||new Date().toISOString().slice(0,10)).slice(0,7).replace('-','');
