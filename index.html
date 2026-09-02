@@ -1297,6 +1297,11 @@ function urlVerifica(){
   const base=location.href.split('?')[0].split('#')[0].replace(/[^/]*$/,'');
   return base+'verifica.html?e='+ESTAB.id;
 }
+function urlVerificaApicultor(associadoId){
+  // página pública do apicultor dentro da associação (verifica.html?e=<estab>&a=<apicultor>)
+  const base=location.href.split('?')[0].split('#')[0].replace(/[^/]*$/,'');
+  return base+'verifica.html?e='+ESTAB.id+'&a='+associadoId;
+}
 function urlLote(loteId){
   // página pública de rastreabilidade do lote (lote.html?l=<id>)
   const base=location.href.split('?')[0].split('#')[0].replace(/[^/]*$/,'');
@@ -1323,6 +1328,9 @@ async function carregarQRLib(){
   throw new Error('qr lib indisponível');
 }
 async function telaQR(){
+  const isAssoc = ESTAB.tipo==='associacao';
+  if(isAssoc){ return telaQRCooperativa(); }
+  // Produtor individual: QR único do estabelecimento (comportamento original)
   const link=urlVerifica();
   $('app').innerHTML=`<h1>QR Code do estabelecimento</h1>
     <div class="banner info">Este é o selo público do estabelecimento. Imprima no rótulo ou material: ao ler, o consumidor vê a rastreabilidade em tempo real.</div>
@@ -1341,12 +1349,77 @@ async function telaQR(){
   try{
     await carregarQRLib();
     const box=$('qr-box'); box.innerHTML='';
-    // qrcodejs cria um <canvas> (e um <img> de fallback) dentro do box
     new QRCode(box,{text:link,width:288,height:288,
       colorDark:'#3D3320',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
   }catch(e){
     $('qr-box').innerHTML='<span class="muted">Não foi possível gerar o QR agora. Verifique a conexão e recarregue.</span>';
   }
+}
+
+async function telaQRCooperativa(){
+  // Um QR por APICULTOR: ao ler, o consumidor vê o apicultor + os lotes/mel dele.
+  const {data:assoc}=await sb.from('mel_associado').select('*').eq('estabelecimento_id',ESTAB.id).eq('ativo',true).order('nome');
+  // conta lotes por apicultor (só mostra apicultor com pelo menos 1 lote)
+  const {data:lotes}=await sb.from('mel_lote').select('associado_id').eq('estabelecimento_id',ESTAB.id).not('associado_id','is',null);
+  const contLote={}; (lotes||[]).forEach(l=>{ contLote[l.associado_id]=(contLote[l.associado_id]||0)+1; });
+  const lista=(assoc||[]);
+  window.__qrApicultores=lista.map(a=>({id:a.id,nome:a.nome,link:urlVerificaApicultor(a.id),lotes:contLote[a.id]||0}));
+  const cards=window.__qrApicultores.map((a,i)=>`
+    <div class="card" style="text-align:center">
+      <h3 style="margin-top:0">${esc(a.nome)}</h3>
+      <div class="muted" style="margin-bottom:10px">${a.lotes} lote(s) de mel</div>
+      <div id="qra-box-${i}" style="display:inline-flex;align-items:center;justify-content:center;background:#fff;padding:16px;border-radius:14px;border:1px solid var(--linha);min-width:180px;min-height:180px">
+        <span class="muted">gerando…</span>
+      </div>
+      <div class="muted" style="margin-top:10px;word-break:break-all;font-size:.8em">${esc(a.link)}</div>
+      <div class="mt" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn sm" onclick="baixarQRApicultor(${i},'jpg')">Baixar JPG</button>
+        <button class="btn sm ghost" onclick="baixarQRApicultor(${i},'pdf')">PDF</button>
+        <a class="btn sm ghost" href="${a.link}" target="_blank">Abrir</a>
+      </div>
+    </div>`).join('');
+  $('app').innerHTML=`<h1>QR Code por apicultor</h1>
+    <div class="banner info">Cada apicultor tem seu próprio QR. Ao ler, o consumidor vê o apicultor e os méis/lotes dele. Imprima o QR de cada um no rótulo do mel correspondente.</div>
+    ${lista.length? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">${cards}</div>`
+      : '<div class="card"><span class="muted">Nenhum apicultor ativo. Cadastre os cooperados na aba Associados.</span></div>'}`;
+  // gera os QRs
+  try{
+    await carregarQRLib();
+    window.__qrApicultores.forEach((a,i)=>{
+      const box=$('qra-box-'+i); if(!box)return; box.innerHTML='';
+      new QRCode(box,{text:a.link,width:200,height:200,
+        colorDark:'#3D3320',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    });
+  }catch(e){
+    window.__qrApicultores.forEach((a,i)=>{ const box=$('qra-box-'+i); if(box) box.innerHTML='<span class="muted">Falha ao gerar o QR.</span>'; });
+  }
+}
+function baixarQRApicultor(i,fmt){
+  const a=(window.__qrApicultores||[])[i]; if(!a){ return; }
+  const box=$('qra-box-'+i); if(!box){ return; }
+  const canvas=box.querySelector('canvas') || (()=>{const img=box.querySelector('img'); if(img&&img.complete){const c=document.createElement('canvas');c.width=img.naturalWidth||200;c.height=img.naturalHeight||200;c.getContext('2d').drawImage(img,0,0);return c;} return null;})();
+  if(!canvas){ alert('O QR ainda está sendo gerado. Aguarde um instante.'); return; }
+  const nome=(a.nome||'apicultor').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  if(fmt==='jpg'){
+    const tmp=document.createElement('canvas'); tmp.width=canvas.width+32; tmp.height=canvas.height+32;
+    const ctx=tmp.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,tmp.width,tmp.height); ctx.drawImage(canvas,16,16);
+    const el=document.createElement('a'); el.href=tmp.toDataURL('image/jpeg',0.95); el.download='qr-'+nome+'.jpg'; el.click();
+    return;
+  }
+  const dataUrl=canvas.toDataURL('image/png');
+  const w=window.open('','_blank');
+  if(!w){ alert('Permita pop-ups para gerar o PDF, ou use o JPG.'); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>QR ${esc(a.nome)}</title>
+    <style>body{font-family:Arial,Helvetica,sans-serif;text-align:center;padding:40px;color:#3D3320}
+      h1{font-size:20px;margin:0 0 4px} h2{font-size:15px;font-weight:normal;margin:0 0 20px;color:#8A7A55}
+      img{width:300px;height:300px} .link{margin-top:16px;font-size:12px;color:#8A7A55;word-break:break-all}
+      @media print{.no-print{display:none}}</style></head>
+    <body><h1>Órigo Mel · Rastreabilidade</h1><h2>${esc(ESTAB.razao_social||'')} · ${esc(a.nome)}</h2>
+      <img src="${dataUrl}"><div class="link">${esc(a.link)}</div>
+      <div class="no-print" style="margin-top:24px"><button onclick="window.print()" style="padding:10px 18px;font-size:14px;cursor:pointer">Imprimir / Salvar como PDF</button></div>
+      <script>window.onload=function(){setTimeout(function(){window.print();},300);};<\/script>
+    </body></html>`);
+  w.document.close();
 }
 // obtém o canvas do QR (ou converte a <img> gerada em canvas)
 function qrParaCanvas(){
